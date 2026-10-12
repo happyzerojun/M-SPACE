@@ -40,6 +40,7 @@ node e2e/run-all.mjs                         # BASE=http://localhost:5174 처럼
 
 - Git Flow: `main`(릴리즈) · `develop`(통합) · `feature/*` · `fix/*` · `release/*` · `hotfix/*`. 자세한 규칙은 `CLAUDE.md` 12장
 - 커밋은 Conventional Commits, 버전은 SemVer 태그(`v0.1.0`), 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)
+- 저장소: https://github.com/happyzerojun/M-SPACE (기본 브랜치 `develop`, 릴리즈는 `main`의 태그)
 - 막혔던 문제와 해결 방법: [`docs/트러블슈팅.md`](docs/트러블슈팅.md)
 
 ## 폴더

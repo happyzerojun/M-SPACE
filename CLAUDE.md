@@ -184,6 +184,13 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 - **병렬 작업은 git worktree**를 써요: `git worktree add ../M-SPACE-<브랜치명> -b feature/<기능> develop`. 끝나면 `git worktree remove`.
 - 작업을 시작할 때 `git status`와 현재 브랜치를 먼저 확인해요. 사용자가 고친 파일이 있으면 덮어쓰지 않고 먼저 알려요.
 
+### 원격 저장소와 PR
+- `origin` = https://github.com/happyzerojun/M-SPACE (**공개 저장소**). 기본 브랜치는 `develop`이에요.
+- `main`·`develop`은 브랜치 보호(관리자 포함 force push·삭제 금지). 병합 방식은 **merge commit만** 켜 두었어요(squash·rebase 끔), 병합된 PR 브랜치는 자동 삭제돼요.
+- 작업 흐름: `feature/*`에서 커밋 → `git push -u origin feature/*` → PR(base `develop`)을 PR 템플릿으로 작성 → 검증 결과를 PR에 적고 병합 → 로컬 `develop`을 `git pull`.
+- `gh` CLI가 없어서 PR 생성·병합은 GitHub REST API로 해요. 토큰은 키체인(`git credential fill`)에서 읽고 **화면·파일·로그에 출력하지 않아요.**
+- **공개 저장소라 올리기 전에 한 번 더 봐요:** `.env`·비밀값·실제 학생 정보가 커밋에 없는지, 스크린샷에 실제 데이터가 없는지.
+
 ### 커밋 메시지 (Conventional Commits)
 - `<type>: <한국어 요약>` + 빈 줄 + 본문 목록 + `Co-Authored-By` 줄
 - type: `feat`(기능) · `fix`(버그) · `docs`(문서만) · `refactor`(동작 변화 없는 구조 변경) · `test`(테스트만) · `chore`(빌드·설정·도구) · `perf` · `style`
@@ -202,7 +209,8 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 1. `git log <마지막 태그>..develop --oneline`으로 변경을 모아 다음 버전 번호를 추천해요.
 2. `git switch -c release/x.y.z develop` → CHANGELOG 버전 확정, README 진행 상황 갱신, 전체 검증(8장 1~3) → 커밋
 3. `main`에 `--no-ff` 병합 → `vX.Y.Z` 태그 → `develop`에도 `--no-ff` 병합 → release 브랜치 삭제
-4. hotfix는 `main`에서 `hotfix/*`를 따서 같은 방식으로 `main`·`develop` 양쪽에 병합하고 PATCH 태그
+4. `main`·`develop`·태그를 push하고, CHANGELOG 해당 버전 내용으로 GitHub Release를 만들어요(0.x는 pre-release)
+5. hotfix는 `main`에서 `hotfix/*`를 따서 같은 방식으로 `main`·`develop` 양쪽에 병합하고 PATCH 태그
 
 ## 13. 트러블슈팅 기록 (`docs/트러블슈팅.md`)
 - **기능 단계를 마칠 때마다**, 그리고 30분 이상 막힌 문제를 풀었을 때 바로 `TS-NN` 항목을 추가해요.
