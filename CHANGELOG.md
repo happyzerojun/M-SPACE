@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+### Added
+- GitHub 공개 저장소 연결(기본 브랜치 `develop`, `main`·`develop` 보호, merge commit만 허용), v0.1.0 GitHub Release
+- 트러블슈팅 TS-08(`gh` 없이 GitHub API 사용), TS-09(커밋 작성자 설정)
+
 ## [0.1.0] - 2026-10-12
 
 ### Added
