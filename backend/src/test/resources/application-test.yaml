@@ -1,0 +1,14 @@
+# 테스트 전용 설정. .env가 없는 환경(CI 등)에서도 테스트가 돌아가게 해요.
+mspace:
+  jwt:
+    secret: test-secret-key-for-mspace-at-least-32-bytes-long
+
+# N+1 검증용: 실행된 SQL 수를 셀 수 있게 Hibernate 통계를 켜요 (테스트에서만)
+spring:
+  jpa:
+    properties:
+      hibernate:
+        generate_statistics: true
+logging:
+  level:
+    org.hibernate.engine.internal.StatisticalLoggingSessionEventListener: WARN

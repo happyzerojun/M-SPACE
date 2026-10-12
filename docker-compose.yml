@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: mspace-postgres
+    environment:
+      POSTGRES_DB: ${DB_NAME:-mspace}
+      POSTGRES_USER: ${DB_USERNAME:-mspace}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?.env 파일에 DB_PASSWORD를 설정해 주세요}
+      TZ: Asia/Seoul
+    ports:
+      - "${DB_PORT:-5433}:5432"   # 5432는 다른 프로젝트 DB가 쓰고 있어서 5433으로 열어요
+    volumes:
+      - mspace-pgdata:/var/lib/postgresql/data   # 컨테이너를 지워도 데이터 유지
+
+volumes:
+  mspace-pgdata:

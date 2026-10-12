@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: mspace
+  config:
+    # 루트의 .env를 읽어요 (실행 위치가 루트든 backend든 동작하게 두 경로)
+    import: optional:file:.env[.properties],optional:file:../.env[.properties]
+  datasource:
+    # 로컬 기본 포트는 5433이에요 (5432는 다른 프로젝트 DB가 쓰고 있어서)
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:mspace}
+    username: ${DB_USERNAME:mspace}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate      # 스키마는 Flyway가 만들고, JPA는 엔티티와 맞는지 검사만 해요
+    open-in-view: false       # DB 연결을 요청 끝까지 붙잡지 않아요
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC      # Instant는 UTC로 저장하고, "오늘"·운영 시간 판단만 Asia/Seoul로 해요 (NF-06)
+
+mspace:
+  jwt:
+    secret: ${JWT_SECRET}
+    access-token-validity: 2h # AU-03

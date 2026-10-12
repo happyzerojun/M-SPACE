@@ -1,0 +1,17 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# 환경 변수 (DB 비밀번호, JWT 비밀키) → 절대 커밋 금지
+.env
+
+# Frontend
+node_modules/
+dist/
+
+# 화면 점검 스크린샷 (e2e)
+e2e/screenshots/
