@@ -71,12 +71,15 @@
 - `backend/src/main/java/com/mspace/` 기능별 패키지: `auth`, `user`, `room`, `reservation`, `key`, `policy`, `admin`, `global`
 - `frontend/src/` `api`, `auth`, `components`, `hooks`, `pages`, `utils`
 - `e2e/` 화면 점검, `scripts/seed-demo.mjs` 시연 데이터
-- 문서(코드와 함께 갱신): `요구사항.md`, `docs/ERD.md`, `docs/API명세서.md`, `docs/예약-상태-설계.md`, `README.md`
+- 문서(코드와 함께 갱신): `요구사항.md`, `docs/ERD.md`, `docs/API명세서.md`, `docs/예약-상태-설계.md`, `README.md`, `CHANGELOG.md`, `docs/트러블슈팅.md`
+- `.github/pull_request_template.md` PR 템플릿
 
 **새 기능 전에 먼저 읽을 것:** 관련 엔티티와 `V*.sql`, `Reservation`의 상태 전이 메서드, 같은 영역의 기존 서비스·컴포넌트, API 명세의 해당 장. 비슷한 코드가 있으면 재사용하고 중복을 만들지 않아요.
 
 ## 6. 작업 권한
 **바로 진행해도 돼요**
+- 작업 브랜치(`feature/*`, `fix/*`) 만들기, 그 브랜치에서의 커밋
+- 검증을 마친 작업 브랜치를 `develop`에 `--no-ff`로 병합
 - 요청 범위 안의 코드·문서 수정과 새 파일 만들기
 - 빌드, 테스트, lint, 로컬 서버 실행, `e2e` 점검, 로컬 DB 조회
 - 검증을 마친 작업의 커밋·푸시
@@ -87,12 +90,14 @@
 - DB 구조 변경(새 Flyway 마이그레이션), API 응답 형식 변경
 - 운영 규칙에 영향을 주는 값(운영 시간, 최대 이용 시간, 노쇼 기준 등) 변경
 - 배포 설정(`.github/workflows`, `deploy/`, Dockerfile, Nginx), 서버 접속
+- **릴리즈**: `release/*`·`hotfix/*` 만들기, `main` 병합, 버전 태그 (다음 버전 번호를 추천안과 함께 물어봐요)
 - 외부에 공개되는 작업(서버 데이터 넣기, 공개 페이지 게시, 학과·학생 대상 알림)
 
 **하지 않아요**
 - 비밀값(DB 비밀번호, JWT 비밀키, 문자·메일 API 키)을 코드·커밋·채팅에 쓰기. 비밀값은 `.env`(커밋 금지)와 GitHub Secrets에만 있어요
 - **실제 학생 개인정보**(학번·이름·전화번호)를 시연 데이터·테스트·로그·커밋에 넣기. 시연 데이터는 가짜 값만 써요
 - 학생증·신분증 이미지를 받거나 저장하는 기능 만들기 (본인 확인은 관리자가 실물로 해요)
+- `main`·`develop`에 직접 커밋, force push, 공유 브랜치(`main`·`develop`·`release/*`)의 rebase·amend 등 **이력 다시 쓰기**, 배포된 태그 옮기기·지우기
 
 ## 7. 코드 규칙
 ### API (명세: `docs/API명세서.md`)
@@ -125,7 +130,9 @@
 2. `npm run lint`(경고 0), `npm run build`
 3. 화면 변경이면 `e2e/`에 점검을 추가하거나 갱신하고 실행
 4. 문서 동기화: 요구사항(ID·변경 이력), ERD, API 명세, 상태 설계서, 필요하면 README
-5. 커밋: `feat:`/`fix:`/`docs:`/`chore:` + 한국어 요약 + 본문 목록, 마지막 줄에 `Co-Authored-By`
+5. 커밋: 작업 브랜치에서 Conventional Commits(12장) + 한국어 요약 + 본문 목록, 마지막 줄에 `Co-Authored-By`
+6. `CHANGELOG.md`의 `[Unreleased]`에 변경 추가, 막혔던 문제는 `docs/트러블슈팅.md`에 기록(13장)
+7. `develop`에 `--no-ff` 병합. 병합 커밋 본문은 PR 템플릿 형식으로 써요(원격 PR을 쓰게 되면 그 내용을 PR 설명으로)
 
 ## 9. 기능을 마친 뒤 점검 루틴
 - **개인정보:** 현황판·목록·에러 메시지·로그로 예약자 이름·학번·전화번호가 새는 경로가 없는지
@@ -159,3 +166,47 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 | D-7 | 알림 | 1차는 화면 안내만, 반납 30분 전 문자/메일 알림은 2차 |
 | D-8 | 배포 서버 · 포트 · 도메인 | 미정 (학과 서버 또는 수업 공용 서버) |
 | D-9 | 시험기간 운영 방식 | ✅ 확정: 방을 열어두는 개방 기간 — 예약은 받고 키 대신 앱 체크인 (QR 체크인은 2차 제안) |
+
+## 12. Git 브랜치·버전 관리 (Git Flow)
+### 브랜치
+| 브랜치 | 만드는 곳 → 합치는 곳 | 용도 |
+|---|---|---|
+| `main` | — | 배포된(릴리즈된) 상태만. 커밋마다 버전 태그 |
+| `develop` | — | 다음 릴리즈를 모으는 통합 브랜치 |
+| `feature/<기능>` | `develop` → `develop` | 기능 개발. 예: `feature/auth-signup`, `feature/reservation-create` |
+| `fix/<버그>` | `develop` → `develop` | 아직 릴리즈되지 않은 버그 수정 |
+| `release/<버전>` | `develop` → `main` + `develop` | 릴리즈 준비: 버전 확정, CHANGELOG 정리, 마지막 버그 수정만 |
+| `hotfix/<내용>` | `main` → `main` + `develop` | 배포된 버전의 긴급 수정 |
+
+- **`main`·`develop`에 직접 커밋하지 않아요.** 작업은 항상 브랜치에서 하고 `git merge --no-ff`로 합쳐요(브랜치 단위가 이력에 남게).
+- 브랜치 이름은 영어 소문자·하이픈(kebab-case). 요구사항 단계 하나 = `feature/*` 하나가 기본이에요.
+- 합친 브랜치는 지워도 되지만(`git branch -d`), 원격에 올라간 브랜치를 지우는 건 먼저 물어봐요.
+- **병렬 작업은 git worktree**를 써요: `git worktree add ../M-SPACE-<브랜치명> -b feature/<기능> develop`. 끝나면 `git worktree remove`.
+- 작업을 시작할 때 `git status`와 현재 브랜치를 먼저 확인해요. 사용자가 고친 파일이 있으면 덮어쓰지 않고 먼저 알려요.
+
+### 커밋 메시지 (Conventional Commits)
+- `<type>: <한국어 요약>` + 빈 줄 + 본문 목록 + `Co-Authored-By` 줄
+- type: `feat`(기능) · `fix`(버그) · `docs`(문서만) · `refactor`(동작 변화 없는 구조 변경) · `test`(테스트만) · `chore`(빌드·설정·도구) · `perf` · `style`
+- 하위 호환이 깨지는 변경(API 응답 형식 등)은 `feat!:`처럼 `!`을 붙이고 본문에 `BREAKING CHANGE:`를 적어요.
+
+### 버전 (SemVer `vMAJOR.MINOR.PATCH`)
+- 1.0.0 전(`0.x`)에는 기능 단계를 릴리즈할 때 MINOR, 버그만 고치면 PATCH를 올려요. 학과에 정식 오픈할 때 `v1.0.0`.
+- 1.0.0 이후: 호환 깨짐 MAJOR, 기능 추가 MINOR, 버그 수정 PATCH.
+- 태그는 `main`의 릴리즈 병합 커밋에 주석 태그로 붙여요: `git tag -a v0.2.0 -m "v0.2.0: 회원·인증"`. 붙인 태그는 옮기거나 지우지 않아요.
+
+### CHANGELOG (`CHANGELOG.md`, Keep a Changelog)
+- 작업 브랜치에서 `[Unreleased]` 아래 `Added`·`Changed`·`Fixed`·`Removed`·`Security`에 사용자 관점 한 줄로 추가해요.
+- 릴리즈 때 `[Unreleased]` 내용을 `## [x.y.z] - YYYY-MM-DD`로 옮겨요.
+
+### 릴리즈 절차 (사용자 확인 후)
+1. `git log <마지막 태그>..develop --oneline`으로 변경을 모아 다음 버전 번호를 추천해요.
+2. `git switch -c release/x.y.z develop` → CHANGELOG 버전 확정, README 진행 상황 갱신, 전체 검증(8장 1~3) → 커밋
+3. `main`에 `--no-ff` 병합 → `vX.Y.Z` 태그 → `develop`에도 `--no-ff` 병합 → release 브랜치 삭제
+4. hotfix는 `main`에서 `hotfix/*`를 따서 같은 방식으로 `main`·`develop` 양쪽에 병합하고 PATCH 태그
+
+## 13. 트러블슈팅 기록 (`docs/트러블슈팅.md`)
+- **기능 단계를 마칠 때마다**, 그리고 30분 이상 막힌 문제를 풀었을 때 바로 `TS-NN` 항목을 추가해요.
+- 형식: 증상(에러 메시지 그대로) → 원인 → 해결 → 재발 방지(무엇을 바꿨는지). 추측이면 "추정"이라고 적어요.
+- 해결하지 못한 문제도 "확인 필요"로 남기고, 풀리면 같은 항목을 갱신해요(지우지 않아요).
+- 같은 종류의 문제가 다시 나오면 새로 쓰기 전에 기존 항목을 먼저 찾아봐요. 반복되는 문제는 규칙(이 문서)이나 테스트로 올려요.
+- 단계 보고에 이번에 추가한 TS 번호를 함께 적어요.

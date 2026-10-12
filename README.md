@@ -36,6 +36,12 @@ cd frontend && npm run lint && npm run build
 node e2e/run-all.mjs                         # BASE=http://localhost:5174 처럼 대상 주소를 바꿀 수 있어요
 ```
 
+## 브랜치·버전
+
+- Git Flow: `main`(릴리즈) · `develop`(통합) · `feature/*` · `fix/*` · `release/*` · `hotfix/*`. 자세한 규칙은 `CLAUDE.md` 12장
+- 커밋은 Conventional Commits, 버전은 SemVer 태그(`v0.1.0`), 변경 내역은 [`CHANGELOG.md`](CHANGELOG.md)
+- 막혔던 문제와 해결 방법: [`docs/트러블슈팅.md`](docs/트러블슈팅.md)
+
 ## 폴더
 
 ```
@@ -49,5 +55,5 @@ docs/      설계 문서
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 0 | 프로젝트 뼈대, 공통 기반(에러·JWT·보안·KST), V1 스키마, 테스트·e2e 기반 | 완료 |
+| 0 | 프로젝트 뼈대, 공통 기반(에러·JWT·보안·KST), V1 스키마, 테스트·e2e 기반, Git Flow·버전 관리 | 완료 (`v0.1.0`) |
 | 1~ | 회원·인증 → 현황판 → 예약 → 키·노쇼 → 관리자 → 배포 | 예정 |
