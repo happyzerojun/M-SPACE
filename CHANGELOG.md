@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-12
+
 ### Added
 - 요구사항·ERD·예약 상태 설계·API 명세 문서 (결정 D-2~D-5, D-9 반영, 시험기간 종일 개방)
 - 백엔드 뼈대: Spring Boot 4.1, 공통 에러 규격, JWT 인증, 관리자 주소 보호, KST 시간 처리, 페이지 응답
@@ -18,3 +20,5 @@
 - 로컬 개발 환경: docker compose(`mspace-postgres`, 포트 5433), `.env.example`
 - Git Flow 브랜치 전략, 버전 관리(SemVer·CHANGELOG), PR 템플릿, 트러블슈팅 기록 문서
 
+[Unreleased]: ../../compare/v0.1.0...develop
+[0.1.0]: ../../releases/tag/v0.1.0
