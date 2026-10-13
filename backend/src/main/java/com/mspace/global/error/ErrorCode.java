@@ -28,6 +28,7 @@ public enum ErrorCode {
     PASSWORD_CHANGE_REQUIRED(HttpStatus.FORBIDDEN, "임시 비밀번호로 로그인했어요. 비밀번호를 먼저 바꿔 주세요."),
     DUPLICATE_STUDENT_NO(HttpStatus.CONFLICT, "이미 가입된 학번이에요. 본인 학번이라면 학과실에 문의해 주세요."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "회원을 찾을 수 없어요."),
+    CANNOT_DISABLE_SELF(HttpStatus.BAD_REQUEST, "본인 계정은 비활성화할 수 없어요."),
     USER_RESTRICTED(HttpStatus.FORBIDDEN, "노쇼 누적으로 {0}까지 예약할 수 없어요."),
 
     // 방

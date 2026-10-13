@@ -26,7 +26,7 @@ cd backend && ./gradlew bootRun          # API :8080 (첫 실행 때 Flyway가 �
 cd frontend && npm install && npm run dev  # 화면 :5173 (/api → 8080 프록시)
 ```
 
-포트가 겹치면 `SERVER_PORT=8081 ./gradlew bootRun`, `API_TARGET=http://localhost:8081 npm run dev -- --port 5174`처럼 바꿔서 띄워요.
+포트가 겹치면 `SERVER_PORT=8081 ./gradlew bootRun`, `API_TARGET=http://localhost:8081 npm run dev -- --port 5175`처럼 바꿔서 띄워요. 띄우기 전에 `lsof -nP -iTCP:<포트> -sTCP:LISTEN`으로 비어 있는지 확인해요.
 
 ## 검증
 
@@ -57,4 +57,5 @@ docs/      설계 문서
 | 단계 | 내용 | 상태 |
 |---|---|---|
 | 0 | 프로젝트 뼈대, 공통 기반(에러·JWT·보안·KST), V1 스키마, 테스트·e2e 기반, Git Flow·버전 관리 | 완료 (`v0.1.0`) |
-| 1~ | 회원·인증 → 현황판 → 예약 → 키·노쇼 → 관리자 → 배포 | 예정 |
+| 1 | 회원·인증 (가입·로그인·내 정보·관리자 회원 관리) | 완료 |
+| 2~ | 현황판 → 예약 → 키·노쇼 → 관리자 → 배포 | 예정 |
