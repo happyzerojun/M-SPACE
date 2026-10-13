@@ -26,7 +26,8 @@ cd frontend && npm run dev:demo    # 로컬에서 보기
 cd frontend && npm run build:demo  # Vercel 배포용 빌드 (frontend/vercel.json)
 ```
 
-- 관리자 화면 체험 계정: 학번 `20990000` / 비밀번호 `demo1234` (가짜 계정)
+- 학생: 로그인 화면의 "데모 학생으로 바로 시작하기" (회원가입 없이 체험, 가짜 계정 `20991111`)
+- 관리자 화면 체험 계정: 학번 `20990000` / 비밀번호 `demo1234` (가짜 계정). **학생 대상 설문이라 화면에는 안내하지 않아요.** 학과실에 보여 줄 때만 써요
 - 설문 문항: [`docs/설문-문항.md`](docs/설문-문항.md), 구글폼 자동 생성: [`scripts/create-survey-form.gs`](scripts/create-survey-form.gs) (Apps Script), 설문 주소는 `frontend/.env.demo`의 `VITE_SURVEY_URL`
 
 ## 로컬 실행
