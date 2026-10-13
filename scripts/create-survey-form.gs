@@ -12,7 +12,7 @@
  * 실행할 때마다 새 폼이 하나씩 생겨요. 다시 만들 필요가 없으면 한 번만 실행해요.
  */
 
-const DEMO_URL = ''; // 예: 'https://m-space-xxxx.vercel.app'
+const DEMO_URL = 'https://m-space-rho.vercel.app'; // Vercel 설문용 데모
 
 function createSurveyForm() {
   const form = FormApp.create('M-SPACE실 온라인 예약 시스템 의견 조사');
