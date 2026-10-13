@@ -1,70 +1,83 @@
-// 설문용 데모 점검 (VITE_DEMO=true 빌드·개발 서버 대상, 백엔드 없음)
-// 학생: 현황판 → 가입 → 예약 → 하루 한도 → 취소 → 개방 기간 이용 시작·종료 / 관리자: 키 지급 → 반납
+// 설문용 데모 점검 (VITE_DEMO=true 서버 대상, 백엔드 없음)
+// 학생: 홈(방 카드) → 빈 시간 칩 → 바로 시작 → 방 화면 예약(2번 누름) → 하루 한도 → 취소 → 가입 → 시험기간 이용 시작·종료
+// 관리자: 키 지급 → 반납. 공식 규정: 1회 최대 2시간
 import { join } from 'node:path'
 import { launch } from './cdp.mjs'
 import { BASE, SHOTS, check } from './common.mjs'
 
 const page = await launch()
 const noHScroll = () => page.eval('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
-const DB = 'mspace.demo.v2'
-/** 데모 저장소를 직접 고쳐요 (시각이 맞아야 하는 이용 시작·키 지급을 지금 점검하려고) */
-const patchDb = (fn) => page.eval(`(() => { const db = JSON.parse(localStorage.getItem('${DB}')); (${fn})(db); localStorage.setItem('${DB}', JSON.stringify(db)) })()`)
-// 확인 창(window.confirm)은 페이지를 옮기면 원래대로 돌아와서, 누를 때마다 '확인'으로 바꿔 둬요 (안 그러면 Chrome이 창에서 멈춰요)
+const DB = 'mspace.demo.v3'
 const clickIn = (selector, text) => page.eval(`window.confirm = () => true;
   [...document.querySelectorAll('${selector} button')].find(b => b.textContent.trim() === ${JSON.stringify(text)}).click()`)
+/** 날짜 격자의 n번째 칸 (0=오늘, 1=내일) */
+const pickDate = (n) => page.eval(`document.querySelectorAll('[aria-label="날짜 선택"] button')[${n}].click()`)
+const summary = () => page.eval(`document.querySelector('[data-testid=summary]').textContent`)
 
 try {
   await page.viewport(375, 740)
 
-  // 1. 현황판: 비회원도 보고, 예약자 이름은 없음 (BD-01, BD-02)
+  // 1. 홈: 비회원도 방 카드로 현황을 보고, 예약자 정보는 없음 (BD-01, BD-02)
   await page.goto(`${BASE}/`)
-  // 원격(Vercel) 주소는 첫 로딩이 느릴 수 있어서 넉넉히 기다려요 (TS-14)
   await page.waitFor(`document.querySelectorAll('li[data-room]').length === 5`, 15_000)
-  check((await page.text()).includes('체험용 데모예요'), '데모 안내 배너')
-  check(await noHScroll(), '현황판 375px 가로 스크롤 없음')
-  const text = await page.text()
-  check(!['김가상', '이예시', '박샘플', '최데모', '010-'].some((s) => text.includes(s)), '현황판에 예약자 이름·전화번호 없음')
-  await page.screenshot(join(SHOTS, 'demo-board-375.png'))
-  await page.clickText('내일')
-  await page.waitFor(`document.querySelector('[aria-pressed=true]')?.textContent === '내일' && document.querySelectorAll('li[data-room]').length === 5`)
-  check(true, '날짜를 바꾸면 그날 현황')
+  const home = await page.text()
+  check(home.includes('체험용 데모예요'), '데모 안내 배너')
+  check(await page.eval(`[...document.querySelectorAll('a')].some(a => a.href.startsWith('https://forms.gle/'))`), '설문 참여 링크(구글폼)')
+  check(home.includes('최대 2시간'), '홈에 공식 규정 최대 2시간 안내')
+  check(await noHScroll(), '홈 375px 가로 스크롤 없음')
+  check(!['김가상', '이예시', '박샘플', '최데모', '010-'].some((s) => home.includes(s)), '홈에 예약자 이름·전화번호 없음')
+  await page.screenshot(join(SHOTS, 'demo-home-375.png'))
 
-  // 2. 로그아웃 상태에서 빈 시간 → 로그인 화면 → "데모 학생으로 바로 시작하기" → 채워진 예약 폼 (가입 없이 체험)
-  await page.waitFor(`document.querySelector('li[data-room="3번방"] a[href^="/reserve"]')`)
-  await page.click('li[data-room="3번방"] a[href^="/reserve"]')
+  // 2. 데모 데이터에 2시간이 넘는 예약이 없음 (공식 규정)
+  const longest = await page.eval(`Math.max(...JSON.parse(localStorage.getItem('${DB}')).reservations.map(r => r.endAt - r.startAt)) / 60000`)
+  check(longest <= 120, '데모 예약 데이터 모두 2시간 이내', `최장 ${longest}분`)
+
+  // 3. 내일 3번방 빈 시간 칩 → 로그인(바로 시작) → 방 화면에 그 시간이 골라져 있음 → 예약하기 = 학생이 누르는 건 3번
+  await pickDate(1)
+  await page.waitFor(`document.querySelector('[aria-label="날짜 선택"] button[aria-pressed=true]') === document.querySelectorAll('[aria-label="날짜 선택"] button')[1] && document.querySelector('li[data-room="3번방"] a[data-quick-slot]')`)
+  await page.click('li[data-room="3번방"] a[data-quick-slot]')
+  await page.waitFor(`location.pathname === '/rooms/3' && document.querySelector('[data-testid=summary]')?.textContent.includes('3번방')`)
+  check((await summary()).includes('~'), '빈 시간 칩을 누르면 시작 시각·이용 시간이 골라진 방 화면')
+  check(await noHScroll(), '방 화면 375px 가로 스크롤 없음')
+  check(await page.eval(`[...document.querySelectorAll('[aria-label="이용 시간"] button')].map(b => b.textContent).at(-1) === '2시간'`), '이용 시간 선택지 최대 2시간')
+  await page.screenshot(join(SHOTS, 'demo-room-375.png'))
+  await page.clickButton('예약하기')
   await page.waitFor(`location.pathname === '/login'`)
   const loginText = await page.text()
-  check(loginText.includes('데모 학생으로 바로 시작하기'), '로그인 화면에 바로 체험 버튼')
+  check(loginText.includes('데모 학생으로 바로 시작하기'), '비회원이 예약하기 → 로그인 화면에 바로 체험 버튼')
   check(!loginText.includes('20990000') && !loginText.includes('관리자'), '로그인 화면에 관리자 계정 안내 없음')
   await page.clickButton('데모 학생으로 바로 시작하기')
-  await page.waitFor(`location.pathname === '/reserve' && document.querySelector('[data-testid=summary]')`)
-  check((await page.eval(`document.querySelector('[data-testid=summary]').textContent`)).includes('3번방'),
-    '바로 시작 후 고른 방·날짜가 채워진 예약 폼으로 돌아옴')
-  check(await noHScroll(), '예약 폼 375px 가로 스크롤 없음')
-  await page.screenshot(join(SHOTS, 'demo-reserve-375.png'))
+  await page.waitFor(`location.pathname === '/rooms/3' && document.querySelector('[data-testid=summary]')?.textContent.includes('~')`)
+  check(true, '로그인 후 고른 시간 그대로 방 화면으로 돌아옴')
   await page.clickButton('예약하기')
   await page.waitFor(`location.pathname === '/me/reservations' && document.querySelectorAll('li[data-reservation]').length === 1`)
-  check((await page.text()).includes('예약했어요.'), '예약 완료 → 내 예약에 표시')
+  const mine = await page.text()
+  check(mine.includes('예약이 완료됐어요'), '예약 완료 카드 → 내 예약에 표시')
+  check(['시작 10분 전', '15분이 지나도', '노쇼', '2주', '2번', '7일 동안 예약할 수 없어요', '시작 전에 이 화면에서 취소'].every((t) => mine.includes(t)),
+    '예약 완료 카드에 노쇼 원칙(키 수령 시간·15분·2주 2회·7일 제한·미리 취소)')
+  await page.screenshot(join(SHOTS, 'demo-done-375.png'))
+  check(mine.includes('써 보니 어땠나요?'), '예약 직후 설문 참여 카드')
 
-  // 3. 같은 날 두 번째 예약은 하루 한도 안내 (RV-06)
+  // 4. 같은 날 두 번째 예약은 하루 한도 안내 (RV-06)
   await page.goto(`${BASE}/`)
   await page.waitFor(`document.querySelectorAll('li[data-room]').length === 5`)
-  await page.clickText('내일')
-  await page.waitFor(`document.querySelector('li[data-room="4번방"] a[href^="/reserve"]')`)
-  await page.click('li[data-room="4번방"] a[href^="/reserve"]')
-  await page.waitFor(`document.querySelector('[data-testid=summary]')`)
+  await pickDate(1)
+  await page.waitFor(`document.querySelector('[aria-label="날짜 선택"] button[aria-pressed=true]') === document.querySelectorAll('[aria-label="날짜 선택"] button')[1] && document.querySelector('li[data-room="4번방"] a[data-quick-slot]')`)
+  await page.click('li[data-room="4번방"] a[data-quick-slot]')
+  await page.waitFor(`document.querySelector('[data-testid=summary]')?.textContent.includes('4번방')`)
   await page.clickButton('예약하기')
   await page.waitFor(`document.querySelector('[role=alert]')?.textContent.includes('하루에 1건')`)
   check(true, '하루 한도 초과 안내 문구')
 
-  // 4. 취소 (RV-10)
+  // 5. 취소 (RV-10)
   await page.goto(`${BASE}/me/reservations`)
   await page.waitFor(`document.querySelectorAll('li[data-reservation]').length === 1`)
   await clickIn('li[data-reservation]', '예약 취소')
   await page.waitFor(`document.body.innerText.includes('예약을 취소했어요.')`)
   check(true, '예약 취소')
+  check(!(await page.text()).includes('예약이 완료됐어요'), '취소하면 예약 완료 카드가 내려감')
 
-  // 4-1. 직접 가입해서 쓰는 흐름도 그대로 동작 (AU-01)
+  // 6. 직접 가입해서 쓰는 흐름도 그대로 동작 (AU-01)
   await page.goto(`${BASE}/me`)
   await page.waitFor(`document.querySelector('h1')?.textContent === '내 정보'`)
   await page.clickButton('로그아웃')
@@ -74,22 +87,21 @@ try {
   await page.type('#field-phone', '010-0000-5555')
   await page.type('#field-password', 'demo1234')
   await page.clickButton('가입하기')
-  await page.waitFor(`location.pathname === '/' && document.querySelector('header nav').innerText.includes('설문체험')`)
+  await page.waitFor(`location.pathname === '/' && document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('설문체험')`)
   check(true, '회원가입 후 바로 로그인')
 
-  // 5. 개방 기간 예약: 이용 시작 → 이용 종료 (OP-02, OP-03)
-  await page.goto(`${BASE}/`)
-  await page.waitFor(`document.querySelectorAll('li[data-room]').length === 5`)
-  const chips = await page.eval(`[...document.querySelectorAll('[aria-label="날짜 선택"] button')].map(b => b.textContent)`)
-  await page.eval(`document.querySelectorAll('[aria-label="날짜 선택"] button')[3].click()`)
-  await page.waitFor(`document.body.innerText.includes('시험기간') && document.querySelector('li[data-room="2번방"] a[href^="/reserve"]')`)
-  check((await page.text()).includes('종일 (00:00~24:00)'), `시험기간(${chips[3]})은 종일 개방으로 표시`)
-  await page.click('li[data-room="2번방"] a[href^="/reserve"]')
-  await page.waitFor(`document.querySelector('[data-testid=summary]')?.textContent.includes('키 없이')`)
+  // 7. 시험기간(개방 기간): 방 화면에서 예약 → 이용 시작 → 이용 종료 (OP-02, OP-03)
+  await pickDate(3)
+  await page.waitFor(`document.body.innerText.includes('시험기간') && document.querySelector('li[data-room="2번방"] a[data-quick-slot]')`)
+  check((await page.text()).includes('종일 (00:00~24:00)'), '시험기간은 종일 개방으로 표시')
+  await page.click('li[data-room="2번방"] a[data-quick-slot]')
+  await page.waitFor(`document.querySelector('[data-testid=summary]')?.textContent.includes('2번방')`)
+  check((await page.text()).includes('이용 시작'), '시험기간 방 화면에 키 대신 이용 시작 안내')
   await page.clickButton('예약하기')
   await page.waitFor(`document.querySelectorAll('li[data-reservation]').length === 1`)
-  // 시작 시각을 5분 뒤로 당겨서(30분 단위 규칙은 화면 점검과 무관) 이용 시작 가능 시간으로 만들어요
-  await patchDb(`(db) => { const r = db.reservations.at(-1); const d = r.endAt - r.startAt; r.startAt = Date.now() + 5 * 60000; r.endAt = r.startAt + d }`)
+  check((await page.text()).includes('"이용 시작"을 누르지 않으면'), '시험기간 예약 완료 카드는 이용 시작 기준 노쇼 안내')
+  await page.eval(`(() => { const db = JSON.parse(localStorage.getItem('${DB}')); const r = db.reservations.at(-1);
+    const d = r.endAt - r.startAt; r.startAt = Date.now() + 5 * 60000; r.endAt = r.startAt + d; localStorage.setItem('${DB}', JSON.stringify(db)) })()`)
   await page.goto(`${BASE}/me/reservations`)
   await page.waitFor(`[...document.querySelectorAll('li[data-reservation] button')].some(b => b.textContent === '이용 시작')`)
   await clickIn('li[data-reservation]', '이용 시작')
@@ -98,8 +110,9 @@ try {
   await clickIn('li[data-reservation]', '이용 종료')
   await page.waitFor(`document.body.innerText.includes('이용을 마쳤어요.')`)
   check(true, '개방 기간: 이용 종료')
+  await page.screenshot(join(SHOTS, 'demo-mine-375.png'))
 
-  // 6. 관리자: 학생증 확인 체크 후 키 지급 → 반납 확인 (KY-01, KY-03)
+  // 8. 관리자: 학생증 확인 체크 후 키 지급 → 반납 확인 (KY-01, KY-03). 계정은 README에만 있어요
   await page.goto(`${BASE}/me`)
   await page.waitFor(`document.querySelector('h1')?.textContent === '내 정보'`)
   await page.clickButton('로그아웃')
@@ -108,7 +121,6 @@ try {
   await page.type('#field-password', 'demo1234')
   await page.clickButton('로그인')
   await page.waitFor(`location.pathname === '/admin' && document.querySelector('dl')`)
-  // 오늘 키 예약 하나를 지금 지급 가능한 시각으로 옮겨요
   const target = await page.eval(`(() => { const db = JSON.parse(localStorage.getItem('${DB}'));
     const r = { id: db.nextId.reservation++, roomId: 4, userId: 2, startAt: Date.now() + 5 * 60000, endAt: Date.now() + 65 * 60000,
       headcount: 2, status: 'RESERVED', keyRequired: true, createdAt: Date.now() };
@@ -123,7 +135,6 @@ try {
   await clickIn(`li[data-reservation="${target}"]`, '본인 확인 완료 · 키 지급')
   await page.waitFor(`document.querySelector('li[data-reservation="${target}"]')?.innerText.includes('이용 중')`)
   check(true, '키 지급 → 이용 중')
-  await page.screenshot(join(SHOTS, 'demo-admin-375.png'))
   await clickIn(`li[data-reservation="${target}"]`, '반납 확인')
   await page.waitFor(`document.querySelector('li[data-reservation="${target}"]')?.innerText.includes('반납 완료')`)
   check(true, '반납 확인 → 반납 완료')

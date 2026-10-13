@@ -1,5 +1,5 @@
 // 설문용 데모 서버: 백엔드 없이 브라우저 안에서 API 명세(docs/API명세서.md)대로 응답해요.
-// 규칙(30분 단위, 운영 시간, 최대 3시간, 하루 1건, 7일, 겹침 금지, 노쇼, 개방 기간)은 실제 서비스와 같게 맞춰요.
+// 규칙(30분 단위, 운영 시간, 최대 2시간, 하루 1건, 7일, 겹침 금지, 노쇼, 개방 기간)은 실제 서비스와 같게 맞춰요.
 // 실제 백엔드를 붙이면 VITE_DEMO를 끄기만 하면 되고, 이 파일은 번들에 들어가지 않아요.
 import { AxiosError } from 'axios'
 import { load, save } from './store'
@@ -257,7 +257,8 @@ route('get', '/rooms', ({ db }) => [200, db.rooms.map(({ id, name, capacity, act
 route('get', '/policy', ({ db }) => [200, {
   slotMinutes: 30, maxDurationMinutes: db.policy.maxDurationMinutes, dailyLimit: db.policy.dailyLimit,
   bookingWindowDays: db.policy.bookingWindowDays, noShowGraceMinutes: db.policy.noShowGraceMinutes,
-  keyIssueBeforeMinutes: db.policy.keyIssueBeforeMinutes,
+  keyIssueBeforeMinutes: db.policy.keyIssueBeforeMinutes, penaltyWindowDays: db.policy.penaltyWindowDays,
+  penaltyThreshold: db.policy.penaltyThreshold, penaltyDays: db.policy.penaltyDays,
 }], true)
 
 route('post', '/reservations', ({ db, me, body, now }) => [201, reservationResponse(db, createReservation(db, me, body, now), me, now)])

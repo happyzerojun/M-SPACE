@@ -1,17 +1,22 @@
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { errorMessage } from '../api/client'
 import { fetchPolicy } from '../api/board'
 import { cancelReservation, checkIn, fetchMyReservations, finishUse } from '../api/reservations'
 import Alert from '../components/Alert.jsx'
+import ReservationDone from '../components/ReservationDone.jsx'
+import SurveyCard from '../components/SurveyCard.jsx'
 import { useAsync } from '../hooks/useAsync'
 import { useNow } from '../hooks/useNow'
+import { roomGradient } from '../utils/slots'
 import { StatusBadge } from '../utils/status.jsx'
 import { dateLabel, kstToday, timeOf, toMs } from '../utils/time'
 
 /** 내 예약 (RV-09, RV-10, OP-02, OP-03): 예정·지난 예약, 취소, 개방 기간 이용 시작·종료 */
 export default function MyReservationsPage() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const justReserved = location.state?.justReserved ?? null
   const [scope, setScope] = useState('upcoming')
   const [version, setVersion] = useState(0)
   const [message, setMessage] = useState(location.state?.message ?? null)
@@ -21,7 +26,7 @@ export default function MyReservationsPage() {
 
   const tab = (value, label) => (
     <button type="button" onClick={() => setScope(value)} aria-pressed={scope === value}
-      className={`flex-1 rounded-md py-2 text-sm ${scope === value ? 'bg-white font-medium shadow-sm' : 'text-gray-600'}`}>
+      className={`flex-1 rounded-lg py-2 text-sm ${scope === value ? 'bg-white font-semibold shadow-sm' : 'text-gray-600'}`}>
       {label}
     </button>
   )
@@ -30,14 +35,16 @@ export default function MyReservationsPage() {
     <section>
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">내 예약</h1>
-        <Link to="/reserve" className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white">새 예약</Link>
+        <Link to="/" className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">새 예약</Link>
       </div>
-      <div className="mt-4 flex gap-1 rounded-lg bg-gray-100 p-1">
+      <div className="mt-4 flex gap-1 rounded-xl bg-gray-200/60 p-1">
         {tab('upcoming', '예정')}
         {tab('past', '지난 예약')}
       </div>
       <div className="mt-4 space-y-3">
+        {justReserved && <ReservationDone r={justReserved} policy={policy} />}
         <Alert kind="success">{message}</Alert>
+        {justReserved && <SurveyCard />}
         <Alert>{error}</Alert>
         {loading && !data && <p className="text-sm text-gray-500">불러오는 중이에요…</p>}
         {data && data.content.length === 0 && (
@@ -48,7 +55,12 @@ export default function MyReservationsPage() {
         <ul className="space-y-3">
           {data?.content.map((r) => (
             <ReservationCard key={r.id} r={r} now={now} policy={policy}
-              onChanged={(msg) => { setMessage(msg); setVersion((v) => v + 1) }} />
+              onChanged={(msg) => {
+                setMessage(msg)
+                setVersion((v) => v + 1)
+                // 취소 등을 하면 예약 완료 카드는 더 이상 맞지 않아서 내려요
+                if (justReserved) navigate(location.pathname, { replace: true, state: null })
+              }} />
           ))}
         </ul>
       </div>
@@ -82,7 +94,9 @@ function ReservationCard({ r, now, policy, onChanged }) {
   }
 
   return (
-    <li className="rounded-lg border border-gray-200 bg-white p-3" data-reservation={r.id}>
+    <li className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-100" data-reservation={r.id}>
+      <div className={`h-1.5 bg-gradient-to-r ${roomGradient(r.room.id)}`} />
+      <div className="p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold">{r.room.name}</p>
@@ -117,6 +131,7 @@ function ReservationCard({ r, now, policy, onChanged }) {
           )}
         </div>
       )}
+      </div>
     </li>
   )
 }

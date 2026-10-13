@@ -3,8 +3,8 @@
 import { DEMO_ADMIN, DEMO_STUDENT } from '../client'
 import { addDays, atMinute, kstDate, MINUTE } from './time'
 
-// v2: 체험 학생 계정 추가. 키를 바꿔서 예전 데모 데이터가 남은 브라우저도 새로 시작해요
-const KEY = 'mspace.demo.v2'
+// v3: 최대 2시간 규정 반영(예전 3시간 예약 제거). 키를 바꿔서 예전 데모 데이터가 남은 브라우저도 새로 시작해요
+const KEY = 'mspace.demo.v3'
 
 function seed(now) {
   const today = kstDate(now)
@@ -25,7 +25,7 @@ function seed(now) {
     { id: 5, name: '5번방', capacity: 8, active: true },
   ]
   const policy = {
-    defaultOpenMinute: 540, defaultCloseMinute: 1080, maxDurationMinutes: 180, dailyLimit: 1, bookingWindowDays: 7,
+    defaultOpenMinute: 540, defaultCloseMinute: 1080, maxDurationMinutes: 120, dailyLimit: 1, bookingWindowDays: 7,
     keyIssueBeforeMinutes: 10, noShowGraceMinutes: 15, penaltyWindowDays: 14, penaltyThreshold: 2, penaltyDays: 7,
   }
   // 모레부터 사흘은 시험기간 종일 개방 (키 대신 앱에서 이용 시작, D-9)
@@ -41,14 +41,16 @@ function seed(now) {
     else if (startAt <= now) r = { ...r, status: 'IN_USE', keyIssuedAt: startAt - 5 * MINUTE }
     reservations.push(r)
   }
+  // 모두 공식 규정(1회 최대 2시간)과 하루 1건 규칙 안이에요
   add(1, 2, today, 600, 720)
   add(2, 3, today, 780, 900)
-  add(5, 4, today, 840, 1020)
+  add(5, 4, today, 840, 960)
   add(3, 5, today, 990, 1080)
-  add(2, 2, addDays(today, 1), 600, 780)
+  add(2, 2, addDays(today, 1), 600, 720)
   add(4, 3, addDays(today, 1), 840, 960)
-  add(1, 4, addDays(today, 2), 1260, 1440, false)
-  add(5, 5, addDays(today, 3), 120, 300, false)
+  add(5, 5, addDays(today, 1), 780, 870)
+  add(1, 4, addDays(today, 2), 1260, 1380, false)
+  add(5, 5, addDays(today, 3), 120, 240, false)
   return { users, rooms, policy, periods, reservations, keyLogs: [], nextId: { user: 7, reservation: reservations.length + 1 } }
 }
 
