@@ -132,7 +132,7 @@
 - API나 규칙을 바꾸면 백엔드와 가짜 서버를 **같이** 고쳐요. 가짜 서버 규칙이 실제와 다르면 설문 결과가 틀려져요.
 - 데모 데이터는 가짜 이름·`2099…` 학번·`010-0000-…` 번호만 써요.
 - 실행: `npm run dev:demo`, 빌드: `npm run build:demo`(Vercel이 이 명령으로 배포), 점검: `node e2e/run-all.mjs demo`
-- 배포: https://m-space-rho.vercel.app — `develop`에 병합하면 Vercel이 자동으로 다시 배포해요. 병합 뒤에는 `BASE=https://m-space-rho.vercel.app node e2e/run-all.mjs demo`로 확인해요.
+- 배포: https://m-space-rho.vercel.app — Vercel 운영 배포는 **`main`만** 따라가요(릴리즈 = 배포). `develop`에 병합하면 미리보기 배포만 생겨요. 데모를 바꿔 학생에게 보여 주려면 릴리즈(먼저 물어봐요)를 하고, 배포 뒤 `BASE=https://m-space-rho.vercel.app node e2e/run-all.mjs demo`로 확인해요 (TS-14).
 
 ## 8. 완료 기준 (기능 하나를 끝낼 때마다)
 1. 백엔드 통합 테스트: 정상 + **권한(남의 예약·비로그인·학생이 관리자 API)** + 경계값(정원, 운영 시간 끝, 30분 단위가 아닌 시각) + 실패 케이스. 예약 생성은 **동시 요청 테스트**(같은 방·같은 시간 N건 → 1건만 성공)를 포함해요. `./gradlew test` 전체 통과
@@ -174,7 +174,7 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 | D-5 | 노쇼 기준과 제재 | ✅ 확정: 시작 15분 후까지 키 미수령 시 NO_SHOW, 2주 내 노쇼 2회면 7일 예약 제한 |
 | D-6 | 학생증 실물 보관 유지 여부 | 키 지급 시 확인만 하고 돌려줌 (기록은 시스템에 남으니까) — **학과 사무실 확인 필요** |
 | D-7 | 알림 | 1차는 화면 안내만, 반납 30분 전 문자/메일 알림은 2차 |
-| D-8 | 배포 서버 · 포트 · 도메인 | 1차: **프론트 데모만 Vercel** https://m-space-rho.vercel.app (설문용, 백엔드 없음, `develop` 자동 배포) ✅ / 백엔드 서버는 설문 뒤 결정 (학과 서버 또는 수업 공용 서버) |
+| D-8 | 배포 서버 · 포트 · 도메인 | 1차: **프론트 데모만 Vercel** https://m-space-rho.vercel.app (설문용, 백엔드 없음, `main` 릴리즈 시 배포) ✅ / 백엔드 서버는 설문 뒤 결정 (학과 서버 또는 수업 공용 서버) |
 | D-9 | 시험기간 운영 방식 | ✅ 확정: 방을 열어두는 개방 기간 — 예약은 받고 키 대신 앱 체크인 (QR 체크인은 2차 제안) |
 
 ## 12. Git 브랜치·버전 관리 (Git Flow)

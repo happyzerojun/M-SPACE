@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-13
+
 ### Added
 - 설문용 프론트 데모(`VITE_DEMO`): 브라우저 안의 가짜 서버로 현황판(30초 갱신)·예약 신청·내 예약(취소·개방 기간 이용 시작·종료)·관리자 예약·키(학생증 확인 후 지급·반납·취소) 체험, Vercel 배포 설정
 - 설문용 데모 배포: https://m-space-rho.vercel.app
@@ -32,5 +34,6 @@
 - 로컬 개발 환경: docker compose(`mspace-postgres`, 포트 5433), `.env.example`
 - Git Flow 브랜치 전략, 버전 관리(SemVer·CHANGELOG), PR 템플릿, 트러블슈팅 기록 문서
 
-[Unreleased]: ../../compare/v0.1.0...develop
+[Unreleased]: ../../compare/v0.2.0...develop
+[0.2.0]: ../../compare/v0.1.0...v0.2.0
 [0.1.0]: ../../releases/tag/v0.1.0

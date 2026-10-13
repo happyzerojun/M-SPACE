@@ -18,7 +18,8 @@ try {
 
   // 1. 현황판: 비회원도 보고, 예약자 이름은 없음 (BD-01, BD-02)
   await page.goto(`${BASE}/`)
-  await page.waitFor(`document.querySelectorAll('li[data-room]').length === 5`)
+  // 원격(Vercel) 주소는 첫 로딩이 느릴 수 있어서 넉넉히 기다려요 (TS-14)
+  await page.waitFor(`document.querySelectorAll('li[data-room]').length === 5`, 15_000)
   check((await page.text()).includes('체험용 데모예요'), '데모 안내 배너')
   check(await noHScroll(), '현황판 375px 가로 스크롤 없음')
   const text = await page.text()
