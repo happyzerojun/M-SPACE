@@ -19,6 +19,8 @@ IT융합대학 M-SPACE실(스터디룸)의 실시간 이용 현황 조회·온�
 
 백엔드 없이 화면만으로 동작하는 체험판이에요 (데이터는 방문자 브라우저에만 저장).
 
+**데모 주소: https://m-space-rho.vercel.app** (Vercel, `develop`에 병합하면 자동 배포)
+
 ```bash
 cd frontend && npm run dev:demo    # 로컬에서 보기
 cd frontend && npm run build:demo  # Vercel 배포용 빌드 (frontend/vercel.json)
