@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { login, signup } from '../api/auth'
-import { errorMessage, fieldErrorsOf } from '../api/client'
+import { errorMessage, fieldErrorsOf, IS_DEMO } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
@@ -38,6 +38,11 @@ export default function SignupPage() {
     <section className="mx-auto max-w-sm">
       <h1 className="text-xl font-bold">회원가입</h1>
       <p className="mt-2 text-sm text-gray-600">예약할 때마다 쓰던 학번·이름·전화번호를 한 번만 등록해요.</p>
+      {IS_DEMO && (
+        <div className="mt-3">
+          <Alert kind="info">체험용 데모예요. 실제 학번·전화번호 대신 아무 숫자나 넣어 주세요. (예: 20991234, 010-0000-0000)</Alert>
+        </div>
+      )}
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
         <FormField label="학번" name="studentNo" inputMode="numeric" autoComplete="username"
           value={form.studentNo} onChange={change} error={fieldErrors.studentNo} hint="숫자 8~10자리" />

@@ -15,6 +15,18 @@ IT융합대학 M-SPACE실(스터디룸)의 실시간 이용 현황 조회·온�
 | DB | PostgreSQL 17 (`btree_gist`) |
 | 테스트 | JUnit 5 + MockMvc + Testcontainers(PostgreSQL), 화면은 `e2e/`(헤드리스 Chrome) |
 
+## 설문용 데모
+
+백엔드 없이 화면만으로 동작하는 체험판이에요 (데이터는 방문자 브라우저에만 저장).
+
+```bash
+cd frontend && npm run dev:demo    # 로컬에서 보기
+cd frontend && npm run build:demo  # Vercel 배포용 빌드 (frontend/vercel.json)
+```
+
+- 관리자 화면 체험 계정: 학번 `20990000` / 비밀번호 `demo1234` (가짜 계정)
+- 설문 문항: [`docs/설문-문항.md`](docs/설문-문항.md), 설문 주소는 `frontend/.env.demo`의 `VITE_SURVEY_URL`
+
 ## 로컬 실행
 
 필요한 것: JDK 21, Node 24, Docker, Chrome(화면 점검용)
@@ -58,4 +70,5 @@ docs/      설계 문서
 |---|---|---|
 | 0 | 프로젝트 뼈대, 공통 기반(에러·JWT·보안·KST), V1 스키마, 테스트·e2e 기반, Git Flow·버전 관리 | 완료 (`v0.1.0`) |
 | 1 | 회원·인증 (가입·로그인·내 정보·관리자 회원 관리) | 완료 |
-| 2~ | 현황판 → 예약 → 키·노쇼 → 관리자 → 배포 | 예정 |
+| 데모 | 설문용 프론트 데모: 현황판·예약·내 예약·개방 기간 이용 시작·관리자 키 지급 (가짜 서버) | 완료 |
+| 2~ | 현황판 → 예약 → 키·노쇼 → 관리자 백엔드 → 배포 | 예정 (설문 결과 반영) |

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { login } from '../api/auth'
-import { errorMessage, fieldErrorsOf } from '../api/client'
+import { errorMessage, fieldErrorsOf, IS_DEMO } from '../api/client'
 import { useAuth } from '../auth/useAuth'
 import Alert from '../components/Alert.jsx'
 import FormField from '../components/FormField.jsx'
@@ -39,6 +39,13 @@ export default function LoginPage() {
   return (
     <section className="mx-auto max-w-sm">
       <h1 className="text-xl font-bold">로그인</h1>
+      {IS_DEMO && (
+        <div className="mt-4">
+          <Alert kind="info">
+            데모 체험: 학생 화면은 회원가입 후 이용해요. 관리자 화면은 학번 <strong>20990000</strong> · 비밀번호 <strong>demo1234</strong>로 볼 수 있어요.
+          </Alert>
+        </div>
+      )}
       <form onSubmit={submit} className="mt-6 space-y-4" noValidate>
         <FormField label="학번" name="studentNo" inputMode="numeric" autoComplete="username"
           value={form.studentNo} onChange={change} error={fieldErrors.studentNo} />
