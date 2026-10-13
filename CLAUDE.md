@@ -125,6 +125,15 @@
 - **모바일 우선**: 학생은 대부분 휴대폰으로 써요. 375px에서 가로 스크롤이 생기면 안 되고, 시간표는 가로 스크롤 대신 방별 세로 목록으로 보여줘요.
 - 무거운 화면(관리자 화면)은 `React.lazy`로 지연 로딩해요.
 
+### 설문용 데모 모드 (`VITE_DEMO=true`)
+- 백엔드 없이 `src/api/demo/server.js`(브라우저 안의 가짜 서버)가 API 명세대로 응답해요. 데이터는 방문자 localStorage에만 있어요.
+- 화면 코드는 데모와 실서비스가 같아요. **데모 전용 분기를 화면에 만들지 않고** 차이는 가짜 서버에만 둬요(예외: 안내 배너, 가입 화면의 가짜 값 안내, 로그인 화면의 "데모 학생으로 바로 시작하기").
+- 설문 대상은 학생이라 **관리자 데모 계정은 화면에 노출하지 않아요**(README에만).
+- API나 규칙을 바꾸면 백엔드와 가짜 서버를 **같이** 고쳐요. 가짜 서버 규칙이 실제와 다르면 설문 결과가 틀려져요.
+- 데모 데이터는 가짜 이름·`2099…` 학번·`010-0000-…` 번호만 써요.
+- 실행: `npm run dev:demo`, 빌드: `npm run build:demo`(Vercel이 이 명령으로 배포), 점검: `node e2e/run-all.mjs demo`
+- 배포: https://m-space-rho.vercel.app — Vercel 운영 배포는 **`main`만** 따라가요(릴리즈 = 배포). `develop`에 병합하면 미리보기 배포만 생겨요. 데모를 바꿔 학생에게 보여 주려면 릴리즈(먼저 물어봐요)를 하고, 배포 뒤 `BASE=https://m-space-rho.vercel.app node e2e/run-all.mjs demo`로 확인해요 (TS-14).
+
 ## 8. 완료 기준 (기능 하나를 끝낼 때마다)
 1. 백엔드 통합 테스트: 정상 + **권한(남의 예약·비로그인·학생이 관리자 API)** + 경계값(정원, 운영 시간 끝, 30분 단위가 아닌 시각) + 실패 케이스. 예약 생성은 **동시 요청 테스트**(같은 방·같은 시간 N건 → 1건만 성공)를 포함해요. `./gradlew test` 전체 통과
 2. `npm run lint`(경고 0), `npm run build`
@@ -147,6 +156,7 @@
 docker compose up -d                       # 로컬 DB (mspace-postgres, 호스트 포트 5433)
 cd backend && ./gradlew bootRun            # 백엔드 :8080
 cd frontend && npm run dev                 # 프론트 :5173 (/api → 8080 프록시)
+cd frontend && npm run dev:demo            # 백엔드 없이 데모 모드
 cd backend && ./gradlew test               # 백엔드 테스트 (Docker 필요)
 cd frontend && npm run lint && npm run build
 node e2e/run-all.mjs [이름...]             # 화면 점검 (Chrome 필요)
@@ -164,7 +174,7 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 | D-5 | 노쇼 기준과 제재 | ✅ 확정: 시작 15분 후까지 키 미수령 시 NO_SHOW, 2주 내 노쇼 2회면 7일 예약 제한 |
 | D-6 | 학생증 실물 보관 유지 여부 | 키 지급 시 확인만 하고 돌려줌 (기록은 시스템에 남으니까) — **학과 사무실 확인 필요** |
 | D-7 | 알림 | 1차는 화면 안내만, 반납 30분 전 문자/메일 알림은 2차 |
-| D-8 | 배포 서버 · 포트 · 도메인 | 미정 (학과 서버 또는 수업 공용 서버) |
+| D-8 | 배포 서버 · 포트 · 도메인 | 1차: **프론트 데모만 Vercel** https://m-space-rho.vercel.app (설문용, 백엔드 없음, `main` 릴리즈 시 배포) ✅ / 백엔드 서버는 설문 뒤 결정 (학과 서버 또는 수업 공용 서버) |
 | D-9 | 시험기간 운영 방식 | ✅ 확정: 방을 열어두는 개방 기간 — 예약은 받고 키 대신 앱 체크인 (QR 체크인은 2차 제안) |
 
 ## 12. Git 브랜치·버전 관리 (Git Flow)
@@ -184,6 +194,13 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 - **병렬 작업은 git worktree**를 써요: `git worktree add ../M-SPACE-<브랜치명> -b feature/<기능> develop`. 끝나면 `git worktree remove`.
 - 작업을 시작할 때 `git status`와 현재 브랜치를 먼저 확인해요. 사용자가 고친 파일이 있으면 덮어쓰지 않고 먼저 알려요.
 
+### 원격 저장소와 PR
+- `origin` = https://github.com/happyzerojun/M-SPACE (**공개 저장소**). 기본 브랜치는 `develop`이에요.
+- `main`·`develop`은 브랜치 보호(관리자 포함 force push·삭제 금지). 병합 방식은 **merge commit만** 켜 두었어요(squash·rebase 끔), 병합된 PR 브랜치는 자동 삭제돼요.
+- 작업 흐름: `feature/*`에서 커밋 → `git push -u origin feature/*` → PR(base `develop`)을 PR 템플릿으로 작성 → 검증 결과를 PR에 적고 병합 → 로컬 `develop`을 `git pull`.
+- `gh` CLI가 없어서 PR 생성·병합은 GitHub REST API로 해요. 토큰은 키체인(`git credential fill`)에서 읽고 **화면·파일·로그에 출력하지 않아요.**
+- **공개 저장소라 올리기 전에 한 번 더 봐요:** `.env`·비밀값·실제 학생 정보가 커밋에 없는지, 스크린샷에 실제 데이터가 없는지.
+
 ### 커밋 메시지 (Conventional Commits)
 - `<type>: <한국어 요약>` + 빈 줄 + 본문 목록 + `Co-Authored-By` 줄
 - type: `feat`(기능) · `fix`(버그) · `docs`(문서만) · `refactor`(동작 변화 없는 구조 변경) · `test`(테스트만) · `chore`(빌드·설정·도구) · `perf` · `style`
@@ -202,7 +219,8 @@ docker exec -it mspace-postgres psql -U mspace -d mspace   # 로컬 DB 접속
 1. `git log <마지막 태그>..develop --oneline`으로 변경을 모아 다음 버전 번호를 추천해요.
 2. `git switch -c release/x.y.z develop` → CHANGELOG 버전 확정, README 진행 상황 갱신, 전체 검증(8장 1~3) → 커밋
 3. `main`에 `--no-ff` 병합 → `vX.Y.Z` 태그 → `develop`에도 `--no-ff` 병합 → release 브랜치 삭제
-4. hotfix는 `main`에서 `hotfix/*`를 따서 같은 방식으로 `main`·`develop` 양쪽에 병합하고 PATCH 태그
+4. `main`·`develop`·태그를 push하고, CHANGELOG 해당 버전 내용으로 GitHub Release를 만들어요(0.x는 pre-release)
+5. hotfix는 `main`에서 `hotfix/*`를 따서 같은 방식으로 `main`·`develop` 양쪽에 병합하고 PATCH 태그
 
 ## 13. 트러블슈팅 기록 (`docs/트러블슈팅.md`)
 - **기능 단계를 마칠 때마다**, 그리고 30분 이상 막힌 문제를 풀었을 때 바로 `TS-NN` 항목을 추가해요.

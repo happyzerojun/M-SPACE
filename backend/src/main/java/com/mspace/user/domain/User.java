@@ -64,4 +64,27 @@ public class User extends BaseTimeEntity {
     public boolean isActive() {
         return status == UserStatus.ACTIVE;
     }
+
+    /** 내 정보 수정 (AU-05). null인 값은 그대로 둬요. 학번·역할은 바꿀 수 없어요. */
+    public void updateProfile(String name, String phone) {
+        if (name != null) this.name = name;
+        if (phone != null) this.phone = phone;
+    }
+
+    /** 본인이 비밀번호를 바꾸면 임시 비밀번호 상태가 풀려요 (AU-05, AU-07) */
+    public void changePassword(String passwordHash) {
+        this.passwordHash = passwordHash;
+        this.mustChangePassword = false;
+    }
+
+    /** 관리자 초기화: 다음 로그인 뒤 다른 기능을 쓰기 전에 비밀번호를 바꾸게 해요 (AU-07) */
+    public void resetPassword(String temporaryPasswordHash) {
+        this.passwordHash = temporaryPasswordHash;
+        this.mustChangePassword = true;
+    }
+
+    /** 남의 학번으로 먼저 가입된 계정 등을 막아요. 학번은 활성 계정끼리만 유일해서 본인이 다시 가입할 수 있어요 (AU-08) */
+    public void disable() {
+        this.status = UserStatus.DISABLED;
+    }
 }
