@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router'
 import { useAuth } from '../auth/useAuth'
+import DemoBanner from './DemoBanner.jsx'
 
 const navClass = ({ isActive }) =>
   `whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium ${isActive ? 'bg-indigo-50 text-indigo-700' : 'text-gray-600 hover:bg-gray-100'}`
@@ -10,6 +11,7 @@ export default function Layout() {
 
   return (
     <div className="min-h-dvh">
+      <DemoBanner />
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between gap-2 px-4 py-3">
           <NavLink to="/" className="text-lg font-bold text-indigo-700">

@@ -9,7 +9,16 @@ export const tokenStorage = {
   clear: () => localStorage.removeItem(TOKEN_KEY),
 }
 
-export const api = axios.create({ baseURL: '/api' })
+/** 설문용 데모: 백엔드 없이 브라우저 안의 가짜 서버(api/demo)로 응답해요. 실제 백엔드를 붙이면 VITE_DEMO를 꺼요 */
+export const IS_DEMO = import.meta.env.VITE_DEMO === 'true'
+/** 데모 화면에 띄울 설문(구글폼) 주소 */
+export const SURVEY_URL = import.meta.env.VITE_SURVEY_URL || ''
+
+export const api = axios.create({
+  baseURL: '/api',
+  // 데모일 때만 가짜 서버 코드를 불러와요 (실서비스 번들에는 들어가지 않아요)
+  ...(IS_DEMO && { adapter: async (config) => (await import('./demo/server.js')).handle(config) }),
+})
 
 // 요청마다 토큰을 자동으로 붙여요
 api.interceptors.request.use((config) => {
