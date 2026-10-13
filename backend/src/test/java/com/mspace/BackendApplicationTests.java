@@ -17,7 +17,7 @@ class BackendApplicationTests extends IntegrationTest {
 				FROM operation_policy"""))
 				.containsEntry("default_open_minute", 540)
 				.containsEntry("default_close_minute", 1080)
-				.containsEntry("max_duration_minutes", 180)
+				.containsEntry("max_duration_minutes", 120)   // V2: 공식 규정 최대 2시간
 				.containsEntry("daily_limit", 1)
 				.containsEntry("booking_window_days", 7)
 				.containsEntry("no_show_grace_minutes", 15)

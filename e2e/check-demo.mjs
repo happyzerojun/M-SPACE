@@ -6,7 +6,7 @@ import { BASE, SHOTS, check } from './common.mjs'
 
 const page = await launch()
 const noHScroll = () => page.eval('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
-const DB = 'mspace.demo.v2'
+const DB = 'mspace.demo.v3'
 /** 데모 저장소를 직접 고쳐요 (시각이 맞아야 하는 이용 시작·키 지급을 지금 점검하려고) */
 const patchDb = (fn) => page.eval(`(() => { const db = JSON.parse(localStorage.getItem('${DB}')); (${fn})(db); localStorage.setItem('${DB}', JSON.stringify(db)) })()`)
 // 확인 창(window.confirm)은 페이지를 옮기면 원래대로 돌아와서, 누를 때마다 '확인'으로 바꿔 둬요 (안 그러면 Chrome이 창에서 멈춰요)
