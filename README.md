@@ -25,7 +25,7 @@ cd frontend && npm run build:demo  # Vercel 배포용 빌드 (frontend/vercel.js
 ```
 
 - 관리자 화면 체험 계정: 학번 `20990000` / 비밀번호 `demo1234` (가짜 계정)
-- 설문 문항: [`docs/설문-문항.md`](docs/설문-문항.md), 설문 주소는 `frontend/.env.demo`의 `VITE_SURVEY_URL`
+- 설문 문항: [`docs/설문-문항.md`](docs/설문-문항.md), 구글폼 자동 생성: [`scripts/create-survey-form.gs`](scripts/create-survey-form.gs) (Apps Script), 설문 주소는 `frontend/.env.demo`의 `VITE_SURVEY_URL`
 
 ## 로컬 실행
 
