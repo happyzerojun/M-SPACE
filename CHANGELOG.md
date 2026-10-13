@@ -9,6 +9,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-13
+
 ### Added
 - 숙박 앱형 예약 화면: 홈 방 카드(지금 상태·빈 시간 칩) → 방 화면(날짜·시작 시각 격자·이용 시간·인원) → 아래 고정 "예약하기"
 - 예약 완료 카드: 예약 내용과 노쇼 원칙(키 수령 시간, 시작 15분 후 노쇼, 2주 2회 → 7일 제한, 미리 취소하면 노쇼 아님, 반납) 안내 (NT-03). 숫자는 운영 정책 값 사용
@@ -45,6 +47,7 @@
 - 로컬 개발 환경: docker compose(`mspace-postgres`, 포트 5433), `.env.example`
 - Git Flow 브랜치 전략, 버전 관리(SemVer·CHANGELOG), PR 템플릿, 트러블슈팅 기록 문서
 
-[Unreleased]: ../../compare/v0.2.0...develop
+[Unreleased]: ../../compare/v0.3.0...develop
+[0.3.0]: ../../compare/v0.2.0...v0.3.0
 [0.2.0]: ../../compare/v0.1.0...v0.2.0
 [0.1.0]: ../../releases/tag/v0.1.0
