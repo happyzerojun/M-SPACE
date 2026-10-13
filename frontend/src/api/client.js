@@ -11,6 +11,13 @@ export const tokenStorage = {
 
 /** 설문용 데모: 백엔드 없이 브라우저 안의 가짜 서버(api/demo)로 응답해요. 실제 백엔드를 붙이면 VITE_DEMO를 꺼요 */
 export const IS_DEMO = import.meta.env.VITE_DEMO === 'true'
+/**
+ * 설문용 데모의 가짜 계정 (실제 정보 아님). 학생은 회원가입 없이 바로 체험하고,
+ * 관리자 계정은 화면에 안내하지 않아요(학생 대상 설문이라). 관리자 체험이 필요하면 README를 봐요
+ */
+export const DEMO_STUDENT = { studentNo: '20991111', password: 'demo1234' }
+export const DEMO_ADMIN = { studentNo: '20990000', password: 'demo1234' }
+
 /** 데모 화면에 띄울 설문(구글폼) 주소 */
 export const SURVEY_URL = import.meta.env.VITE_SURVEY_URL || ''
 
