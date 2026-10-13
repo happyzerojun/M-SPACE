@@ -52,7 +52,10 @@ try {
   await page.clickButton('예약하기')
   await page.waitFor(`location.pathname === '/me/reservations' && document.querySelectorAll('li[data-reservation]').length === 1`)
   const mine = await page.text()
-  check(mine.includes('예약했어요.'), '예약 완료 → 내 예약에 표시')
+  check(mine.includes('예약이 완료됐어요'), '예약 완료 카드 → 내 예약에 표시')
+  check(['시작 10분 전', '15분이 지나도', '노쇼', '2주', '2번', '7일 동안 예약할 수 없어요', '시작 전에 이 화면에서 취소'].every((t) => mine.includes(t)),
+    '예약 완료 카드에 노쇼 원칙(키 수령 시간·15분·2주 2회·7일 제한·미리 취소)')
+  await page.screenshot(join(SHOTS, 'demo-done-375.png'))
   check(mine.includes('써 보니 어땠나요?'), '예약 직후 설문 참여 카드')
 
   // 4. 같은 날 두 번째 예약은 하루 한도 안내 (RV-06)
@@ -72,6 +75,7 @@ try {
   await clickIn('li[data-reservation]', '예약 취소')
   await page.waitFor(`document.body.innerText.includes('예약을 취소했어요.')`)
   check(true, '예약 취소')
+  check(!(await page.text()).includes('예약이 완료됐어요'), '취소하면 예약 완료 카드가 내려감')
 
   // 6. 직접 가입해서 쓰는 흐름도 그대로 동작 (AU-01)
   await page.goto(`${BASE}/me`)
@@ -95,6 +99,7 @@ try {
   check((await page.text()).includes('이용 시작'), '시험기간 방 화면에 키 대신 이용 시작 안내')
   await page.clickButton('예약하기')
   await page.waitFor(`document.querySelectorAll('li[data-reservation]').length === 1`)
+  check((await page.text()).includes('"이용 시작"을 누르지 않으면'), '시험기간 예약 완료 카드는 이용 시작 기준 노쇼 안내')
   await page.eval(`(() => { const db = JSON.parse(localStorage.getItem('${DB}')); const r = db.reservations.at(-1);
     const d = r.endAt - r.startAt; r.startAt = Date.now() + 5 * 60000; r.endAt = r.startAt + d; localStorage.setItem('${DB}', JSON.stringify(db)) })()`)
   await page.goto(`${BASE}/me/reservations`)

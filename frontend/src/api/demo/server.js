@@ -257,7 +257,8 @@ route('get', '/rooms', ({ db }) => [200, db.rooms.map(({ id, name, capacity, act
 route('get', '/policy', ({ db }) => [200, {
   slotMinutes: 30, maxDurationMinutes: db.policy.maxDurationMinutes, dailyLimit: db.policy.dailyLimit,
   bookingWindowDays: db.policy.bookingWindowDays, noShowGraceMinutes: db.policy.noShowGraceMinutes,
-  keyIssueBeforeMinutes: db.policy.keyIssueBeforeMinutes,
+  keyIssueBeforeMinutes: db.policy.keyIssueBeforeMinutes, penaltyWindowDays: db.policy.penaltyWindowDays,
+  penaltyThreshold: db.policy.penaltyThreshold, penaltyDays: db.policy.penaltyDays,
 }], true)
 
 route('post', '/reservations', ({ db, me, body, now }) => [201, reservationResponse(db, createReservation(db, me, body, now), me, now)])
