@@ -12,7 +12,7 @@ const PASSWORD = 'mspace1234'
 const page = await launch()
 const noHScroll = () => page.eval('document.documentElement.scrollWidth <= document.documentElement.clientWidth')
 const heading = () => page.eval(`document.querySelector('h1')?.textContent`)
-const navText = () => page.eval(`document.querySelector('header nav').innerText`)
+const navText = () => page.eval(`document.querySelector('nav[aria-label="주 메뉴"]').innerText`)
 
 async function fillLogin(studentNo, password) {
   await page.type('#field-studentNo', studentNo)
@@ -33,8 +33,8 @@ try {
   await page.type('#field-phone', '01000000000')
   await page.type('#field-password', PASSWORD)
   await page.clickButton('가입하기')
-  await page.waitFor(`location.pathname === '/' && document.querySelector('header nav').innerText.includes('점검학생')`)
-  check(true, '가입 후 자동 로그인, 상단에 이름 표시')
+  await page.waitFor(`location.pathname === '/' && document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('점검학생')`)
+  check(true, '가입 후 자동 로그인, 아래 메뉴에 이름 표시')
 
   // 2. 같은 학번 재가입은 409 안내
   const dup = await fetch(`${API}/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -47,7 +47,7 @@ try {
   check((await page.eval(`document.querySelector('#field-phone').value`)) === '010-0000-0000', '내 정보에 정규화된 전화번호')
   check(await noHScroll(), '/me 375px 가로 스크롤 없음')
   await page.clickButton('로그아웃')
-  await page.waitFor(`document.querySelector('header nav').innerText.includes('로그인')`)
+  await page.waitFor(`document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('로그인')`)
   check(true, '로그아웃하면 로그인 메뉴로 바뀜')
 
   // 4. 로그인 필요 화면 → 로그인 → 원래 화면으로 (next)
@@ -63,7 +63,7 @@ try {
   check(true, '로그인 후 원래 화면(내 예약)으로 돌아감')
 
   // 5. 학생은 관리자 화면·메뉴가 없음
-  check(!(await navText()).includes('관리'), '학생 상단 메뉴에 관리 없음')
+  check(!(await navText()).includes('관리'), '학생 아래 메뉴에 관리 없음')
   await page.goto(`${BASE}/admin`)
   await page.waitFor(`document.querySelector('h1')?.textContent === '관리자만 볼 수 있는 화면이에요.'`)
   check(true, '학생이 /admin 접근하면 안내')
@@ -76,10 +76,10 @@ try {
   await page.goto(`${BASE}/me`)
   await page.waitFor(`document.querySelector('h1')?.textContent === '내 정보'`)
   await page.clickButton('로그아웃')
-  await page.goto(`${BASE}/login?next=%2Fadmin`)
+  await page.goto(`${BASE}/login?next=%2Fadmin%2Fusers`)
   await fillLogin(admin, PASSWORD)
-  await page.waitFor(`location.pathname === '/admin' && document.querySelector('input[aria-label="학번 또는 이름"]')`)
-  check((await navText()).includes('관리'), '관리자 상단 메뉴에 관리')
+  await page.waitFor(`location.pathname === '/admin/users' && document.querySelector('input[aria-label="학번 또는 이름"]')`)
+  check((await navText()).includes('관리'), '관리자 아래 메뉴에 관리')
   await page.type('input[aria-label="학번 또는 이름"]', student)
   await page.clickButton('검색')
   await page.waitFor(`document.querySelectorAll('li[data-student-no]').length === 1`)
@@ -115,13 +115,13 @@ try {
   check(true, '변경 후 내 예약 화면 이용 가능')
   check((await heading()) === '내 예약', '내 예약 제목')
 
-  // 8. 긴 이름이어도 상단 메뉴가 375px 안에 들어감
+  // 8. 긴 이름이어도 아래 메뉴가 375px 안에 들어감
   sql(`UPDATE users SET name = '아주아주긴이름을가진점검학생입니다' WHERE student_no = '${student}' AND status = 'ACTIVE'`)
   await page.goto(`${BASE}/me`)
   await page.waitFor(`document.querySelector('h1')?.textContent === '내 정보'`)
   check(await noHScroll(), '긴 이름에서도 375px 가로 스크롤 없음')
-  check(await page.eval(`[...document.querySelectorAll('header nav a')].every((a) => a.getBoundingClientRect().right <= innerWidth)`),
-    '긴 이름에서도 상단 메뉴가 화면 안에 다 보임')
+  check(await page.eval(`[...document.querySelectorAll('nav[aria-label="주 메뉴"] a')].every((a) => a.getBoundingClientRect().right <= innerWidth)`),
+    '긴 이름에서도 아래 메뉴가 화면 안에 다 보임')
 } catch (e) {
   check(false, '회원·인증 점검 실행', e.message)
   await page.screenshot(join(SHOTS, 'auth-failure.png')).catch(() => {})

@@ -9,6 +9,7 @@ import MyReservationsPage from './pages/MyReservationsPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import PasswordChangePage from './pages/PasswordChangePage.jsx'
 import ReservePage from './pages/ReservePage.jsx'
+import RoomPage from './pages/RoomPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 
 // 관리자 화면은 학생 대부분이 받지 않아도 되게 따로 불러요 (CLAUDE.md 7장)
@@ -21,7 +22,8 @@ export default function App() {
         <Route index element={<BoardPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
-        <Route path="reserve" element={<RequireAuth><ReservePage /></RequireAuth>} />
+        <Route path="rooms/:roomId" element={<RoomPage />} />
+        <Route path="reserve" element={<ReservePage />} />
         <Route path="me" element={<RequireAuth><MePage /></RequireAuth>} />
         <Route path="me/password" element={<RequireAuth><PasswordChangePage /></RequireAuth>} />
         <Route path="me/reservations" element={<RequireAuth><MyReservationsPage /></RequireAuth>} />
