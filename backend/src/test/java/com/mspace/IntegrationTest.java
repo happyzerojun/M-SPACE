@@ -44,7 +44,7 @@ public abstract class IntegrationTest {
         // users는 operation_policy가 참조해서 TRUNCATE ... CASCADE를 쓰면 정책 행까지 지워져요 → DELETE로 비워요
         jdbcTemplate.execute("""
                 UPDATE operation_policy SET default_open_minute = 540, default_close_minute = 1080,
-                    max_duration_minutes = 180, daily_limit = 1, booking_window_days = 7,
+                    max_duration_minutes = 120, daily_limit = 1, booking_window_days = 7,
                     key_issue_before_minutes = 10, no_show_grace_minutes = 15,
                     penalty_window_days = 14, penalty_threshold = 2, penalty_days = 7, updated_by = NULL
                 """);

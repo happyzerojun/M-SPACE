@@ -145,7 +145,7 @@
 응답 `200` `[{ "id", "name", "capacity", "active" }]` (sort_order 순, 목록이 작아 페이지 없음)
 
 ### GET `/api/policy` — 예약 규칙 안내 · 비로그인
-응답 `200` `{ "slotMinutes": 30, "maxDurationMinutes": 180, "dailyLimit": 1, "bookingWindowDays": 7, "noShowGraceMinutes": 15, "keyIssueBeforeMinutes": 10 }` (예약 화면 안내 문구에 써요)
+응답 `200` `{ "slotMinutes": 30, "maxDurationMinutes": 120, "dailyLimit": 1, "bookingWindowDays": 7, "noShowGraceMinutes": 15, "keyIssueBeforeMinutes": 10 }` (예약 화면 안내 문구에 써요)
 
 ---
 

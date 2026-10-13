@@ -223,7 +223,7 @@ ALTER TABLE key_log ADD CONSTRAINT ck_key_log_issue_verified CHECK (action <> 'I
 | id | 1 | CHECK (id = 1) |
 | default_open_minute | 540 (09:00) | 0시 기준 분. 30의 배수 |
 | default_close_minute | 1080 (18:00) | 최대 1440(24:00). CHECK close > open |
-| max_duration_minutes | 180 | RV-05 |
+| max_duration_minutes | 120 | RV-05, 공식 규정 최대 2시간 (V1은 180, V2에서 120으로 변경) |
 | daily_limit | 1 | RV-06 |
 | booking_window_days | 7 | RV-07 |
 | key_issue_before_minutes | 10 | KY-02 |
@@ -292,5 +292,6 @@ ALTER TABLE user_restriction ADD CONSTRAINT ex_user_restriction_active
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
+| v0.4 | 2026-10-13 | V2: `max_duration_minutes` 기본값 180 → 120 (공식 규정) |
 | v0.3 | 2026-10-12 | V1 구현: 30분 단위 CHECK(`ck_reservation_slot`), `key_log` 수정·삭제 금지 트리거(`tr_key_log_immutable`), 초기 데이터(방 5개·정책 1행) |
 | v0.2 | 2026-10-12 | 개방 기간(D-9): `operation_period.key_required`, `reservation.key_required·checked_in_at·completed_at`, `COMPLETED` 상태 추가 |
