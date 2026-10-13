@@ -62,8 +62,9 @@ export default function RoomPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await createReservation({ roomId: room.id, headcount, startAt: isoAt(date, start), endAt: isoAt(date, start + duration) })
-      navigate('/me/reservations', { state: { message: '예약했어요.', justReserved: true } })
+      const created = await createReservation({ roomId: room.id, headcount, startAt: isoAt(date, start), endAt: isoAt(date, start + duration) })
+      // 예약 완료 카드에 방금 만든 예약과 노쇼 원칙을 보여줘요 (NT-03)
+      navigate('/me/reservations', { state: { justReserved: created } })
     } catch (err) {
       setError(errorMessage(err))
     } finally {

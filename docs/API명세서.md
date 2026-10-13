@@ -145,7 +145,7 @@
 응답 `200` `[{ "id", "name", "capacity", "active" }]` (sort_order 순, 목록이 작아 페이지 없음)
 
 ### GET `/api/policy` — 예약 규칙 안내 · 비로그인
-응답 `200` `{ "slotMinutes": 30, "maxDurationMinutes": 120, "dailyLimit": 1, "bookingWindowDays": 7, "noShowGraceMinutes": 15, "keyIssueBeforeMinutes": 10 }` (예약 화면 안내 문구에 써요)
+응답 `200` `{ "slotMinutes": 30, "maxDurationMinutes": 120, "dailyLimit": 1, "bookingWindowDays": 7, "noShowGraceMinutes": 15, "keyIssueBeforeMinutes": 10, "penaltyWindowDays": 14, "penaltyThreshold": 2, "penaltyDays": 7 }` (예약 화면·예약 완료 안내 문구에 써요. 노쇼 제재 기준은 NS-02)
 
 ---
 
@@ -251,6 +251,7 @@
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
+| v0.6 | 2026-10-13 | `GET /api/policy`에 노쇼 제재 기준(`penaltyWindowDays`·`penaltyThreshold`·`penaltyDays`) 추가 — 예약 완료 화면에 노쇼 원칙 안내 |
 | v0.5 | 2026-10-13 | `GET /api/policy`에 `keyIssueBeforeMinutes` 추가 (설문용 데모 화면 안내 문구) |
 | v0.4 | 2026-10-12 | 1단계(회원·인증) 세부 확정: 전화번호 정규화, 임시 비밀번호 상태 허용 API, 회원 검색 조건, `recentNoShowCount`, `CANNOT_DISABLE_SELF` |
 | v0.3 | 2026-10-12 | 0단계 구현과 맞춤: `CLOSED_DAY`를 `OUTSIDE_OPERATING_HOURS`에서 분리, 공통 `NOT_FOUND`·`METHOD_NOT_ALLOWED` 추가 |
