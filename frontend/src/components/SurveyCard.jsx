@@ -8,7 +8,7 @@ export default function SurveyCard() {
       className="flex items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-amber-400 to-orange-400 p-4 text-white shadow-sm">
       <span>
         <span className="block font-semibold">써 보니 어땠나요?</span>
-        <span className="block text-sm text-white/90">1분 설문으로 의견을 들려주세요</span>
+        <span className="block text-sm text-white/90">2분 설문으로 의견을 들려주세요</span>
       </span>
       <span className="shrink-0 rounded-full bg-white px-3 py-1.5 text-sm font-semibold text-orange-600">설문 참여</span>
     </a>
