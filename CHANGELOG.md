@@ -9,6 +9,11 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-13
+
+### Changed
+- 설문 소요 시간 안내 1분 → 2분 (설문 카드·폼 설명)
+
 ## [0.3.0] - 2026-10-13
 
 ### Added
@@ -47,7 +52,8 @@
 - 로컬 개발 환경: docker compose(`mspace-postgres`, 포트 5433), `.env.example`
 - Git Flow 브랜치 전략, 버전 관리(SemVer·CHANGELOG), PR 템플릿, 트러블슈팅 기록 문서
 
-[Unreleased]: ../../compare/v0.3.0...develop
+[Unreleased]: ../../compare/v0.3.1...develop
+[0.3.1]: ../../compare/v0.3.0...v0.3.1
 [0.3.0]: ../../compare/v0.2.0...v0.3.0
 [0.2.0]: ../../compare/v0.1.0...v0.2.0
 [0.1.0]: ../../releases/tag/v0.1.0
