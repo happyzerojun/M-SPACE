@@ -4,7 +4,7 @@ import { launch } from './cdp.mjs'
 import { BASE, SHOTS, check } from './common.mjs'
 
 const PAGES = [
-  ['/', '실시간 이용 현황'],
+  ['/', '어느 방에서 공부할까요?'],
   ['/login', '로그인'],
   ['/signup', '회원가입'],
   ['/me/reservations', '로그인'],   // 비회원은 로그인 화면으로 가요
@@ -21,9 +21,9 @@ try {
     const { scrollWidth, clientWidth } = await page.eval(
       '({ scrollWidth: document.documentElement.scrollWidth, clientWidth: document.documentElement.clientWidth })')
     check(scrollWidth <= clientWidth, `${path} 375px 가로 스크롤 없음`, `${scrollWidth}/${clientWidth}`)
-    const navVisible = await page.eval(`[...document.querySelectorAll('header nav a')]
+    const navVisible = await page.eval(`[...document.querySelectorAll('nav[aria-label="주 메뉴"] a')]
       .every((a) => { const r = a.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth })`)
-    check(navVisible, `${path} 상단 메뉴가 화면 안에 다 보임`)
+    check(navVisible, `${path} 아래 메뉴가 화면 안에 다 보임`)
   }
   await page.goto(BASE + '/')
   await page.screenshot(join(SHOTS, 'layout-375.png'))
