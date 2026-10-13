@@ -7,8 +7,8 @@ const PAGES = [
   ['/', '실시간 이용 현황'],
   ['/login', '로그인'],
   ['/signup', '회원가입'],
-  ['/me/reservations', '내 예약'],
-  ['/admin', '관리자'],
+  ['/me/reservations', '로그인'],   // 비회원은 로그인 화면으로 가요
+  ['/admin', '로그인'],
   ['/no-such-page', '페이지를 찾을 수 없어요.'],
 ]
 

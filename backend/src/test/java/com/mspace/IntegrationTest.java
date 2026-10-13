@@ -1,11 +1,16 @@
 package com.mspace;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.jayway.jsonpath.JsonPath;
 import com.mspace.global.security.JwtTokenProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -58,6 +63,41 @@ public abstract class IntegrationTest {
 
     protected String bearer(Long userId) {
         return "Bearer " + tokenProvider.createAccessToken(userId);
+    }
+
+    /** 테스트 비밀번호 (영문+숫자 규칙 만족) */
+    protected static final String PASSWORD = "mspace1234";
+
+    /** API로 가입한 학생. 학번은 99로 시작하는 가짜 값만 써요 */
+    protected record TestUser(Long id, String studentNo, String token) {
+        public String bearer() {
+            return "Bearer " + token;
+        }
+    }
+
+    protected TestUser signupAndLogin(String studentNo) throws Exception {
+        mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"studentNo":"%s","name":"테스트","phone":"010-0000-0000","password":"%s"}
+                        """.formatted(studentNo, PASSWORD)))
+                .andExpect(status().isCreated());
+        return login(studentNo, PASSWORD);
+    }
+
+    protected TestUser login(String studentNo, String password) throws Exception {
+        String body = mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"studentNo":"%s","password":"%s"}
+                        """.formatted(studentNo, password)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return new TestUser(((Number) JsonPath.read(body, "$.user.id")).longValue(), studentNo,
+                JsonPath.read(body, "$.accessToken"));
+    }
+
+    /** 가입 후 SQL로 관리자 지정 (관리자는 회원가입으로 만들 수 없어요, AU-06) */
+    protected TestUser adminLogin(String studentNo) throws Exception {
+        signupAndLogin(studentNo);
+        jdbcTemplate.update("UPDATE users SET role = 'ADMIN' WHERE student_no = ?", studentNo);
+        return login(studentNo, PASSWORD);
     }
 
     protected Long roomId(String name) {

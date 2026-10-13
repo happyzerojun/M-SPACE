@@ -40,6 +40,7 @@
 | 404 | `RESERVATION_NOT_FOUND` | 예약을 찾을 수 없어요. |
 | 404 | `ROOM_NOT_FOUND` / `USER_NOT_FOUND` / `PERIOD_NOT_FOUND` / `RESTRICTION_NOT_FOUND` | …을(를) 찾을 수 없어요. |
 | 405 | `METHOD_NOT_ALLOWED` | 지원하지 않는 요청 방식이에요. |
+| 400 | `CANNOT_DISABLE_SELF` | 본인 계정은 비활성화할 수 없어요. |
 | 409 | `DUPLICATE_STUDENT_NO` | 이미 가입된 학번이에요. 본인 학번이라면 학과실에 문의해 주세요. |
 | 409 | `RESERVATION_TIME_CONFLICT` | 이미 예약된 시간이에요. 다른 시간을 골라 주세요. |
 | 409 | `USER_TIME_CONFLICT` | 같은 시간에 이미 다른 예약이 있어요. |
@@ -86,14 +87,17 @@
 ```json
 { "studentNo": "20231234", "name": "홍길동", "phone": "010-1234-5678", "password": "********" }
 ```
-검증: 학번 숫자 8~10자리, 이름 1~50자, 전화번호 `01X-XXXX-XXXX`, 비밀번호 8~64자(영문·숫자 포함).
+검증: 학번 숫자 8~10자리, 이름 1~50자(앞뒤 공백 제거), 전화번호 `01X-XXX(X)-XXXX`(하이픈 없이 입력해도 돼요. `010-1234-5678` 형식으로 저장), 비밀번호 8~64자(영문·숫자 모두 포함).
+같은 학번 동시 가입은 DB 제약(`uq_users_student_no_active`)으로 1건만 성공해요.
 응답 `201` `UserResponse` `{ "id", "studentNo", "name", "phone", "role", "mustChangePassword" }`
 에러: `400 VALIDATION_FAILED`, `409 DUPLICATE_STUDENT_NO`
 
 ### POST `/api/auth/login` — 로그인 (AU-03) · 비로그인
 요청 `{ "studentNo": "20231234", "password": "********" }`
 응답 `200` `{ "accessToken": "…", "expiresIn": 7200, "user": UserResponse }`
-에러: `401 LOGIN_FAILED` (학번 없음·비밀번호 틀림·비활성 계정 모두 같은 메시지)
+에러: `401 LOGIN_FAILED` (학번 없음·비밀번호 틀림·비활성 계정 모두 같은 메시지. 학번이 없을 때도 비밀번호 해시 비교를 해서 응답 시간으로 가입 여부를 알 수 없게 해요)
+
+임시 비밀번호(`mustChangePassword: true`)로 로그인하면 로그인은 성공하고, 그 뒤 `GET /api/me`·`PUT /api/me/password`와 비회원 공개 API 말고는 `403 PASSWORD_CHANGE_REQUIRED`예요 (AU-07).
 
 > 로그아웃(AU-04)은 클라이언트가 토큰을 지워요. 액세스 토큰 유효 2시간, 리프레시 토큰은 1차에서 두지 않아요.
 
@@ -101,11 +105,12 @@
 응답 `200` `UserResponse` (본인이라 전화번호 마스킹 없음)
 
 ### PATCH `/api/me` — 내 정보 수정 (AU-05) · 로그인
-요청 `{ "name"?: "홍길동", "phone"?: "010-1234-5678" }` → `200 UserResponse`
+요청 `{ "name"?: "홍길동", "phone"?: "010-1234-5678" }` → `200 UserResponse` (보낸 값만 바꿔요. 학번·역할은 바꿀 수 없어요)
 
 ### PUT `/api/me/password` — 비밀번호 변경 (AU-05, AU-07) · 로그인
 요청 `{ "currentPassword": "…", "newPassword": "…" }` → `204`
-에러: `400 VALIDATION_FAILED`(현재 비밀번호 불일치는 `fieldErrors.currentPassword`)
+새 비밀번호 규칙은 가입과 같아요. 바꾸면 `mustChangePassword`가 풀려요.
+에러: `400 VALIDATION_FAILED`(현재 비밀번호 불일치는 `fieldErrors.currentPassword`, 새 비밀번호가 현재와 같으면 `fieldErrors.newPassword`)
 
 ---
 
@@ -220,9 +225,9 @@
 
 | 메서드 | 경로 | 요청 | 응답 | 비고 |
 |---|---|---|---|---|
-| GET | `/api/admin/users?q=&page=` | — | `PageResponse<AdminUserResponse>` | `{ id, studentNo, name, phone, role, status, noShowCount14d, restrictedUntil }` |
-| POST | `/api/admin/users/{id}/password-reset` | `{ "reason": "본인 방문 확인" }` | `200 { "temporaryPassword": "…" }` | 임시 비밀번호는 이 응답에서만 보여요. 로그·감사 기록에 남기지 않아요 |
-| POST | `/api/admin/users/{id}/disable` | `{ "reason": "…" }` | `200 AdminUserResponse` | 진행 중 RESERVED 예약은 관리자 취소 처리 |
+| GET | `/api/admin/users?q=&status=&page=&size=` | — | `PageResponse<AdminUserResponse>` | `q`: 학번 앞부분 또는 이름 일부, `status`: `ACTIVE`·`DISABLED`(생략 시 전체), 학번 오름차순. `{ id, studentNo, name, phone, role, status, mustChangePassword, recentNoShowCount, restrictedUntil, createdAt }` — `recentNoShowCount`는 최근 `penalty_window_days`일 노쇼 수, `restrictedUntil`은 해제되지 않은 이용 제한의 종료 시각(없으면 null) |
+| POST | `/api/admin/users/{id}/password-reset` | `{ "reason": "본인 방문 확인" }` (1~200자) | `200 { "temporaryPassword": "…" }` | AU-07. 임시 비밀번호(영문·숫자 10자)는 이 응답에서만 보여요(`Cache-Control: no-store`). 로그·감사 기록에 남기지 않아요. 비활성 계정은 `404 USER_NOT_FOUND` |
+| POST | `/api/admin/users/{id}/disable` | `{ "reason": "…" }` (1~200자) | `200 AdminUserResponse` | AU-08. 이미 비활성이면 그대로 200(기록 추가 없음). 본인 계정은 `400 CANNOT_DISABLE_SELF`. 진행 중 RESERVED 예약의 관리자 취소는 예약 단계(3단계)에서 추가해요 |
 | GET | `/api/admin/restrictions?active=true&page=` | — | `PageResponse<RestrictionResponse>` | |
 | POST | `/api/admin/restrictions/{id}/lift` | `{ "reason": "…" }` | `200 RestrictionResponse` | 이미 해제됐으면 409 `INVALID_RESTRICTION_STATE` |
 
@@ -246,5 +251,6 @@
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
+| v0.4 | 2026-10-12 | 1단계(회원·인증) 세부 확정: 전화번호 정규화, 임시 비밀번호 상태 허용 API, 회원 검색 조건, `recentNoShowCount`, `CANNOT_DISABLE_SELF` |
 | v0.3 | 2026-10-12 | 0단계 구현과 맞춤: `CLOSED_DAY`를 `OUTSIDE_OPERATING_HOURS`에서 분리, 공통 `NOT_FOUND`·`METHOD_NOT_ALLOWED` 추가 |
 | v0.2 | 2026-10-12 | 개방 기간(D-9): check-in·finish API, `keyRequired`·`COMPLETED`, `CHECK_IN_NOT_ALLOWED_TIME` 추가 |
