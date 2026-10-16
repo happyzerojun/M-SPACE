@@ -16,10 +16,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# ubuntu-latest는 2026-10-19부터 Ubuntu 26으로 바뀌어서, 러너가 바뀌어 깨지는 일이 없게 버전을 고정해요
 jobs:
   backend:
     name: backend (gradle test)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -34,7 +35,16 @@ jobs:
           cache: gradle
 
       - name: Test
-        run: ./gradlew test --no-daemon
+        run: |
+          set -o pipefail
+          ./gradlew test --no-daemon 2>&1 | tee gradle-test.log
+
+      # 컴파일 오류처럼 테스트 리포트가 안 생기는 실패도 Checks 화면에서 원인을 볼 수 있게 annotation으로 올려요
+      - name: Build errors
+        if: failure()
+        run: |
+          grep -E "error:|warning: \[|What went wrong|FAILED|Exception" gradle-test.log | head -10 \
+            | sed -e 's/%/%25/g' -e 's/^/::error title=Gradle::/' || true
 
       # 몇 건이 돌았는지 실행 요약과 로그에 남겨요 (실패해도 남게 always)
       - name: Test summary
@@ -53,6 +63,26 @@ jobs:
               print(f"- {root.get('name')}: {root.get('tests')}건")
           print(f"\nTOTAL tests={total} failures={failures} errors={errors} skipped={skipped}")
           EOF
+          # 실행 요약 페이지를 열지 않아도 PR의 Checks 화면(annotation)에서 건수를 볼 수 있게 해요
+          python3 - <<'EOF'
+          import glob
+          import xml.etree.ElementTree as ET
+          roots = [ET.parse(p).getroot() for p in sorted(glob.glob('build/test-results/test/*.xml'))]
+          total = sum(int(r.get('tests', 0)) for r in roots)
+          failed = sum(int(r.get('failures', 0)) + int(r.get('errors', 0)) for r in roots)
+          skipped = sum(int(r.get('skipped', 0)) for r in roots)
+          per_class = ', '.join(f"{r.get('name').rsplit('.', 1)[-1]}={r.get('tests')}" for r in roots)
+          print(f"::notice title=Backend tests::tests={total} failed={failed} skipped={skipped}")
+          print(f"::notice title=Backend tests by class::{per_class}")
+          shown = 0
+          for r in roots:
+              for case in r.iter('testcase'):
+                  bad = case.find('failure') if case.find('failure') is not None else case.find('error')
+                  if bad is not None and shown < 8:
+                      shown += 1
+                      detail = (bad.get('message') or bad.text or '').replace('%', '%25').replace('\r', '').replace('\n', '%0A')[:1500]
+                      print(f"::error title={case.get('classname')}.{case.get('name')}::{detail}")
+          EOF
 
       - name: Upload test reports
         if: failure()
@@ -66,7 +96,7 @@ jobs:
 
   frontend:
     name: frontend (lint + build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
