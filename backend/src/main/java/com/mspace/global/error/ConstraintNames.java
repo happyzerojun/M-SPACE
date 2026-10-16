@@ -3,6 +3,7 @@ package com.mspace.global.error;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,7 +32,21 @@ public final class ConstraintNames {
     public static final String CHECK_VIOLATION = "23514";
     public static final String FOREIGN_KEY_VIOLATION = "23503";
 
+    /** PostgreSQL SQLState (Class 40 — Transaction Rollback): 동시 트랜잭션끼리 부딪혀 한쪽이 끊긴 경우 (TS-16) */
+    public static final String SERIALIZATION_FAILURE = "40001";
+    public static final String DEADLOCK_DETECTED = "40P01";
+
+    private static final Set<String> TRANSACTION_ROLLBACK_STATES = Set.of(SERIALIZATION_FAILURE, DEADLOCK_DETECTED);
+
     private static final Pattern QUOTED_CONSTRAINT = Pattern.compile("constraint \"([A-Za-z0-9_]+)\"");
+
+    /**
+     * Hibernate가 만든 SQL의 종류와 대상 테이블. 앞에 블록 주석(use_sql_comments)이 붙어도 읽어요.
+     * 사람이 쓴 문장이 아니라 Hibernate가 엔티티 매핑으로 만든 문장이라 로케일·서버 설정과 무관해요.
+     */
+    private static final Pattern STATEMENT_TARGET = Pattern.compile(
+            "^\\s*(?:/\\*.*?\\*/\\s*)?(insert\\s+into|update|delete\\s+from)\\s+\"?([A-Za-z0-9_]+)\"?",
+            Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     /**
      * 꺼낸 제약 위반 정보.
@@ -42,7 +57,64 @@ public final class ConstraintNames {
     public record Violation(String constraint, String sqlState) {
     }
 
+    /**
+     * 교착(40P01)·직렬화 실패(40001) 정보.
+     *
+     * @param sqlState  40P01 또는 40001
+     * @param operation 끊긴 문장의 종류(INSERT·UPDATE·DELETE). Hibernate 경로가 아니면(JdbcTemplate 등) null
+     * @param table     끊긴 문장의 대상 테이블. 모르면 null
+     */
+    public record TransactionConflict(String sqlState, String operation, String table) {
+
+        /** 예약 INSERT끼리 겹침 검사(EXCLUDE) 중에 끊긴 경우인지 */
+        public boolean isInsertInto(String tableName) {
+            return "INSERT".equals(operation) && tableName.equals(table);
+        }
+    }
+
     private ConstraintNames() {
+    }
+
+    /**
+     * 원인 사슬에서 40P01·40001을 찾아요. 없으면 null이에요 (TS-16).
+     *
+     * <p>교착 에러에는 제약 이름 필드가 없어요(서버 CONTEXT에 {@code while checking exclusion constraint ... in
+     * relation "reservation"}처럼 문장으로만 와요). 문장은 lc_messages에 따라 번역되므로(TS-15) 대신 Hibernate가 함께
+     * 넘겨주는 실행 SQL({@link JDBCException#getSQL()})에서 문장 종류와 테이블을 읽어요.
+     */
+    public static TransactionConflict transactionConflictOf(Throwable e) {
+        String sqlState = null;
+        String operation = null;
+        String table = null;
+
+        Set<Throwable> visited = Collections.newSetFromMap(new IdentityHashMap<>());
+        for (Throwable t = e; t != null && visited.add(t); t = nextOf(t)) {
+            if (sqlState == null) {
+                String state = serverSqlStateOf(t);
+                if (state != null && TRANSACTION_ROLLBACK_STATES.contains(state)) {
+                    sqlState = state;
+                }
+            }
+            if (table == null && t instanceof JDBCException jdbc && jdbc.getSQL() != null) {
+                Matcher m = STATEMENT_TARGET.matcher(jdbc.getSQL());
+                if (m.find()) {
+                    operation = m.group(1).toUpperCase(Locale.ROOT).split("\\s+")[0];
+                    table = m.group(2).toLowerCase(Locale.ROOT);
+                }
+            }
+        }
+        return sqlState == null ? null : new TransactionConflict(sqlState, operation, table);
+    }
+
+    /** 서버 에러 필드의 SQLState를 먼저, 없으면 예외에 담긴 SQLState를 써요 */
+    private static String serverSqlStateOf(Throwable t) {
+        if (t instanceof PSQLException psql) {
+            ServerErrorMessage server = psql.getServerErrorMessage();
+            if (server != null && server.getSQLState() != null) {
+                return server.getSQLState();
+            }
+        }
+        return sqlStateOf(t);
     }
 
     /** 제약 이름만 필요할 때. 못 찾으면 null이에요. */

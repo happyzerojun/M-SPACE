@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -34,6 +35,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * JPA(Hibernate)로 저장할 때 난 제약 위반도 에러 코드로 바뀌는지 (TS-05, TS-15).
@@ -52,6 +55,9 @@ class JpaConstraintMappingTest extends IntegrationTest {
 
     @Autowired
     private ReservationRowRepository reservationRows;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Test
     void 부분_유니크_인덱스_위반은_DUPLICATE_STUDENT_NO() {
@@ -140,12 +146,13 @@ class JpaConstraintMappingTest extends IntegrationTest {
                         // saveAndFlush는 리포지토리 트랜잭션 안에서 INSERT하고 바로 커밋해요 (요청 하나 = 트랜잭션 하나)
                         reservationRows.saveAndFlush(ReservationRow.reserved(room, userId, T14, T16));
                         return "SUCCESS";
-                    } catch (PessimisticLockingFailureException e) {
-                        // 동시에 들어온 두 INSERT가 서로의 진행 중인 행을 기다리면 PostgreSQL이 교착 상태(40P01)로
-                        // 한쪽을 끊을 수 있어요(추정, TS-15). 겹치는 예약이 생긴 건 아니라서 따로 세요
-                        return "DEADLOCK";
                     } catch (DataAccessException e) {
+                        // 23P01(겹침)은 제약 매핑으로, 서로의 진행 중인 행을 기다리다 난 교착(40P01)은
+                        // 교착 매핑으로 바뀌어요. 둘 다 RESERVATION_TIME_CONFLICT여야 해요 (TS-16)
                         ErrorCode code = GlobalExceptionHandler.toErrorCode(e);
+                        if (code == null) {
+                            code = GlobalExceptionHandler.toTransactionConflictCode(e);
+                        }
                         return code == null ? "OTHER:" + e : code.name();
                     }
                 }));
@@ -155,14 +162,12 @@ class JpaConstraintMappingTest extends IntegrationTest {
 
             int success = 0;
             int conflict = 0;
-            int deadlock = 0;
             List<String> others = new ArrayList<>();
             for (Future<String> f : results) {
                 String result = f.get(30, TimeUnit.SECONDS);
                 switch (result) {
                     case "SUCCESS" -> success++;
                     case "RESERVATION_TIME_CONFLICT" -> conflict++;
-                    case "DEADLOCK" -> deadlock++;
                     default -> others.add(result);
                 }
             }
@@ -170,9 +175,74 @@ class JpaConstraintMappingTest extends IntegrationTest {
 
             assertThat(others).as("예상하지 못한 실패").isEmpty();
             assertThat(success).isEqualTo(1);
-            assertThat(conflict + deadlock).isEqualTo(n - 1);
-            assertThat(conflict).as("겹침은 409로 바뀌어야 해요").isPositive();
+            assertThat(conflict).as("나머지는 교착이든 겹침이든 모두 409").isEqualTo(n - 1);
             assertThat(reservationRows.count()).isEqualTo(1);
+        }
+
+        /**
+         * 교착을 확정적으로 만들어요 (TS-16). 두 트랜잭션이 서로 상대 방의 같은 시간을 잡으려고 하면
+         * A: 1번방 14~16 INSERT → (B의 2번방 14~16을 기다림) / B: 2번방 14~16 INSERT → (A의 1번방 14~16을 기다림)
+         * EXCLUDE 검사가 커밋 전 행을 서로 기다리는 원이 생기고, deadlock_timeout(기본 1초) 뒤 PostgreSQL이 한쪽을 40P01로 끊어요.
+         */
+        @Test
+        void 겹치는_예약_INSERT끼리의_교착_40P01은_500이_아니라_RESERVATION_TIME_CONFLICT_409() throws Exception {
+            Long room1 = roomId("1번방");
+            Long room2 = roomId("2번방");
+            List<Long> users = new ArrayList<>();
+            for (int i = 0; i < 4; i++) {
+                users.add(insertUser("9930000" + i, "STUDENT"));
+            }
+            TransactionTemplate tx = new TransactionTemplate(transactionManager);
+            CyclicBarrier firstInsertsDone = new CyclicBarrier(2);
+
+            ExecutorService pool = Executors.newFixedThreadPool(2);
+            Future<Throwable> a = pool.submit(() -> crossInsert(tx, firstInsertsDone,
+                    ReservationRow.reserved(room1, users.get(0), T14, T16),
+                    ReservationRow.reserved(room2, users.get(2), T15, T17)));
+            Future<Throwable> b = pool.submit(() -> crossInsert(tx, firstInsertsDone,
+                    ReservationRow.reserved(room2, users.get(1), T14, T16),
+                    ReservationRow.reserved(room1, users.get(3), T15, T17)));
+            Throwable failedA = a.get(30, TimeUnit.SECONDS);
+            Throwable failedB = b.get(30, TimeUnit.SECONDS);
+            pool.shutdown();
+
+            // 정확히 한쪽만 끊기고, 남은 쪽은 상대 행이 롤백돼 두 건 모두 저장돼요
+            assertThat(failedA == null ^ failedB == null).as("한쪽만 실패: A=%s, B=%s", failedA, failedB).isTrue();
+            Throwable thrown = failedA != null ? failedA : failedB;
+            assertThat(reservationRows.count()).isEqualTo(2);
+
+            assertThat(thrown).isInstanceOf(PessimisticLockingFailureException.class);
+            PSQLException psql = findCause(thrown, PSQLException.class);
+            assertThat((Throwable) psql).as("드라이버 예외").isNotNull();
+            assertThat(psql.getSQLState()).isEqualTo(ConstraintNames.DEADLOCK_DETECTED);
+            assertThat(ConstraintNames.transactionConflictOf(thrown))
+                    .isEqualTo(new ConstraintNames.TransactionConflict("40P01", "INSERT", "reservation"));
+            // 교착 에러에는 제약 이름이 없어서 제약 매핑으로는 못 바꿔요 → 교착 매핑이 필요한 이유
+            assertThat(GlobalExceptionHandler.toErrorCode(thrown)).isNull();
+
+            ResponseEntity<ErrorResponse> response =
+                    new GlobalExceptionHandler().handleLockFailure((PessimisticLockingFailureException) thrown);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().code()).isEqualTo("RESERVATION_TIME_CONFLICT");
+        }
+
+        /** 한 트랜잭션에서 첫 INSERT → 상대도 첫 INSERT를 마칠 때까지 대기 → 두 번째 INSERT. 실패하면 그 예외를 돌려줘요 */
+        private Throwable crossInsert(TransactionTemplate tx, CyclicBarrier barrier, ReservationRow first, ReservationRow second) {
+            try {
+                tx.executeWithoutResult(status -> {
+                    reservationRows.saveAndFlush(first);
+                    try {
+                        barrier.await(10, TimeUnit.SECONDS);
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                    reservationRows.saveAndFlush(second);
+                });
+                return null;
+            } catch (RuntimeException e) {
+                return e;
+            }
         }
     }
 }

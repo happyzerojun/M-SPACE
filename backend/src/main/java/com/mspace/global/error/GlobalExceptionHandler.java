@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -38,6 +39,9 @@ public class GlobalExceptionHandler {
     /** 제약 하나가 어떤 SQLState로 위반되고, 그때 어떤 에러 코드로 바꾸는지 */
     record ConstraintRule(String sqlState, ErrorCode errorCode) {
     }
+
+    /** 겹침 검사(EXCLUDE)가 걸린 테이블. 이 테이블 INSERT가 교착으로 끊기면 "이미 예약된 시간"으로 안내해요 (TS-16) */
+    static final String RESERVATION_TABLE = "reservation";
 
     /** 서비스 규칙 위반 (가장 많이 쓰여요) */
     @ExceptionHandler(BusinessException.class)
@@ -86,14 +90,67 @@ public class GlobalExceptionHandler {
         return toResponse(ErrorCode.METHOD_NOT_ALLOWED);
     }
 
-    /** DB 제약 위반. 알려진 제약이면 409, 그 밖에는 코드 버그일 가능성이 커서 500이에요. */
+    /**
+     * DB 제약 위반. 알려진 제약이면 409, 그 밖에는 코드 버그일 가능성이 커서 500이에요.
+     * 로그에는 제약 이름·SQLState만 남겨요. 예외를 그대로 넘기면 PostgreSQL DETAIL(위반한 행의 학번·이름·전화번호)이
+     * 메시지 사슬에 섞여 로그에 남아서, 메시지를 가린 사본({@link DbErrorLog#masked})으로 스택만 남겨요 (NF-01, TS-16).
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException e) {
         ErrorCode errorCode = toErrorCode(e);
         if (errorCode == null) {
-            log.error("예상하지 못한 DB 제약 위반: {}", ConstraintNames.of(e), e);
+            ConstraintNames.Violation violation = ConstraintNames.violationOf(e);
+            log.error("예상하지 못한 DB 제약 위반: constraint={}, sqlState={}",
+                    violation == null ? null : violation.constraint(),
+                    violation == null ? null : violation.sqlState(),
+                    DbErrorLog.masked(e));
             return toResponse(ErrorCode.INTERNAL_ERROR);
         }
+        return toResponse(errorCode);
+    }
+
+    /**
+     * 동시 트랜잭션끼리 부딪혀 DB가 한쪽을 끊은 경우: 교착(40P01)·직렬화 실패(40001)·잠금 대기 실패 (TS-16).
+     *
+     * <p>겹치는 예약 INSERT가 동시에 들어오면 EXCLUDE 검사가 서로의 커밋 전 행을 기다리다 교착이 되고, PostgreSQL이
+     * 한쪽(패자)을 40P01로 끊어요. 패자가 기다리던 상대가 바로 같은 시간을 잡은 예약이라, 패자에게 맞는 답은 23P01과 같은
+     * "이미 예약된 시간"이에요. 그래서 재시도하지 않고 바로 {@code RESERVATION_TIME_CONFLICT}(409)로 바꿔요.
+     * <ul>
+     *   <li>재시도하지 않는 이유: 다시 해도 승자가 커밋한 뒤라 대부분 23P01(같은 409)로 끝나요. 인기 시간대가 열리는
+     *       순간처럼 요청이 몰릴 때 재시도는 DB 부하만 키우고, 재시도는 트랜잭션 전체를 다시 실행해야 해서 서비스 구조도
+     *       복잡해져요.</li>
+     *   <li>감수하는 것: 승자가 나중에 롤백하면 실제로는 빈 시간인데 409를 받을 수 있어요(현황판 새로고침 후 다시 신청).
+     *       교착 에러에는 제약 이름이 없어 같은 학생의 시간 겹침({@code USER_TIME_CONFLICT})과 구분하지 못해요.</li>
+     *   <li>예약 INSERT가 아닌 교착(예: 같은 행을 동시에 수정)은 무엇과 부딪혔는지 단정할 수 없어
+     *       {@code CONCURRENT_UPDATE}(409, "새로고침 후 다시 시도")로 안내해요.</li>
+     * </ul>
+     * 예전에는 이 예외를 처리하는 곳이 없어 아래 {@link #handleUnexpected}로 떨어져 500이었어요.
+     */
+    @ExceptionHandler(PessimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleLockFailure(PessimisticLockingFailureException e) {
+        ErrorCode errorCode = toTransactionConflictCode(e);
+        return toTransactionConflictResponse(e, errorCode == null ? ErrorCode.CONCURRENT_UPDATE : errorCode);
+    }
+
+    /**
+     * 교착·직렬화 실패면 에러 코드, 아니면 null. 예약 테이블 INSERT면 RESERVATION_TIME_CONFLICT, 그 밖에는 CONCURRENT_UPDATE.
+     * 서비스에서 예외를 직접 잡을 때도 써요.
+     */
+    public static ErrorCode toTransactionConflictCode(Throwable e) {
+        ConstraintNames.TransactionConflict conflict = ConstraintNames.transactionConflictOf(e);
+        if (conflict == null) {
+            return null;
+        }
+        return conflict.isInsertInto(RESERVATION_TABLE) ? ErrorCode.RESERVATION_TIME_CONFLICT : ErrorCode.CONCURRENT_UPDATE;
+    }
+
+    private ResponseEntity<ErrorResponse> toTransactionConflictResponse(Throwable e, ErrorCode errorCode) {
+        ConstraintNames.TransactionConflict conflict = ConstraintNames.transactionConflictOf(e);
+        // 동시 요청이 몰리면 정상적으로 생기는 일이라 스택 없이 WARN 한 줄만 남겨요 (DETAIL은 프로세스 번호뿐이지만 남기지 않아요)
+        log.warn("동시 트랜잭션 충돌 → {}: sqlState={}, statement={} {}", errorCode,
+                conflict == null ? null : conflict.sqlState(),
+                conflict == null ? null : conflict.operation(),
+                conflict == null ? null : conflict.table());
         return toResponse(errorCode);
     }
 
@@ -129,7 +186,13 @@ public class GlobalExceptionHandler {
     /** 예상하지 못한 오류: 원인은 서버 로그에만 남기고, 응답에는 내부 정보를 숨겨요 (NF-01) */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpected(Exception e) {
-        log.error("처리되지 않은 예외", e);
+        // 커밋 시점 등 다른 예외로 감싸여 온 교착·직렬화 실패도 500이 아니라 409로 (TS-16)
+        ErrorCode transactionConflict = toTransactionConflictCode(e);
+        if (transactionConflict != null) {
+            return toTransactionConflictResponse(e, transactionConflict);
+        }
+        // DB 예외가 섞여 있으면 메시지(DETAIL)를 가린 사본으로 남겨요 (TS-16)
+        log.error("처리되지 않은 예외", DbErrorLog.masked(e));
         return toResponse(ErrorCode.INTERNAL_ERROR);
     }
 
