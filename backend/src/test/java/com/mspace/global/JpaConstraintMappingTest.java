@@ -91,7 +91,8 @@ class JpaConstraintMappingTest extends IntegrationTest {
             assertThat(thrown).isInstanceOf(DataIntegrityViolationException.class);
             assertThat(findCause(thrown, JDBCException.class)).as("Hibernate 경로").isNotNull();
             PSQLException psql = findCause(thrown, PSQLException.class);
-            assertThat(psql).as("드라이버 예외").isNotNull();
+            // SQLException은 Throwable이면서 Iterable이라 assertThat 오버로드가 모호해서 Throwable로 맞춰요
+            assertThat((Throwable) psql).as("드라이버 예외").isNotNull();
             assertThat(psql.getServerErrorMessage()).isNotNull();
             assertThat(psql.getServerErrorMessage().getConstraint()).isEqualTo("ex_reservation_room_time");
             assertThat(psql.getSQLState()).isEqualTo(ConstraintNames.EXCLUSION_VIOLATION);
