@@ -25,8 +25,9 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+	// 제약 이름을 서버 에러 필드(PSQLException)로 읽으려고 컴파일 범위로 올려요. 새 라이브러리가 아니라 범위만 바꿨어요 (TS-15)
+	implementation 'org.postgresql:postgresql'
 	compileOnly 'org.projectlombok:lombok'
-	runtimeOnly 'org.postgresql:postgresql'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-gson:0.12.6'
 	annotationProcessor 'org.projectlombok:lombok'

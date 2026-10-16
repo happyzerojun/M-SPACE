@@ -51,6 +51,8 @@ cd frontend && npm run lint && npm run build
 node e2e/run-all.mjs                         # BASE=http://localhost:5174 처럼 대상 주소를 바꿀 수 있어요
 ```
 
+PR(`develop`·`main` 대상)과 병합마다 GitHub Actions(`.github/workflows/ci.yml`)가 백엔드 테스트와 프론트 lint·빌드를 돌려요. 백엔드 테스트 건수는 PR의 Checks 화면 annotation에 남아요.
+
 ## 브랜치·버전
 
 - Git Flow: `main`(릴리즈) · `develop`(통합) · `feature/*` · `fix/*` · `release/*` · `hotfix/*`. 자세한 규칙은 `CLAUDE.md` 12장

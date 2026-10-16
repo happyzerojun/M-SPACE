@@ -9,6 +9,12 @@ spring:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:mspace}
     username: ${DB_USERNAME:mspace}
     password: ${DB_PASSWORD}
+    hikari:
+      data-source-properties:
+        # PostgreSQL 에러의 DETAIL(위반한 행의 학번·이름·전화번호 값)을 예외 메시지에 넣지 않아요 (NF-01, TS-16).
+        # Hibernate(SqlExceptionHelper)·Spring이 예외 메시지를 그대로 로그에 찍어서, 드라이버에서 먼저 빼는 게 1차 방어예요.
+        # 제약 이름·SQLState 같은 에러 필드는 그대로 받아요(PSQLException.getServerErrorMessage()).
+        logServerErrorDetail: false
   jpa:
     hibernate:
       ddl-auto: validate      # 스키마는 Flyway가 만들고, JPA는 엔티티와 맞는지 검사만 해요
