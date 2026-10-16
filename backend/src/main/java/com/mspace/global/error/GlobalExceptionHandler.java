@@ -24,15 +24,20 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
     /**
-     * DB 제약 이름 → 에러 코드. 애플리케이션 검사를 통과한 뒤 동시 요청이 끼어든 경우를 409로 바꿔요.
+     * DB 제약 이름 → (기대 SQLState, 에러 코드). 애플리케이션 검사를 통과한 뒤 동시 요청이 끼어든 경우를 409로 바꿔요.
      * 중복·동시 요청은 락이 아니라 이 제약들이 막아요 (NF-05).
+     * SQLState까지 맞춰 보는 이유: 이름만 보면 트리거 메시지 등에 같은 이름이 섞였을 때 엉뚱한 409가 나갈 수 있어서요 (TS-15).
      */
-    static final Map<String, ErrorCode> CONSTRAINT_ERRORS = Map.of(
-            "ex_reservation_room_time", ErrorCode.RESERVATION_TIME_CONFLICT,   // RV-03
-            "ex_reservation_user_time", ErrorCode.USER_TIME_CONFLICT,
-            "uq_users_student_no_active", ErrorCode.DUPLICATE_STUDENT_NO,      // AU-01
-            "ex_operation_period_dates", ErrorCode.PERIOD_OVERLAP,             // PO-02
-            "uq_key_log_reservation_action", ErrorCode.INVALID_RESERVATION_STATE);
+    static final Map<String, ConstraintRule> CONSTRAINT_ERRORS = Map.of(
+            "ex_reservation_room_time", new ConstraintRule(ConstraintNames.EXCLUSION_VIOLATION, ErrorCode.RESERVATION_TIME_CONFLICT),  // RV-03
+            "ex_reservation_user_time", new ConstraintRule(ConstraintNames.EXCLUSION_VIOLATION, ErrorCode.USER_TIME_CONFLICT),
+            "uq_users_student_no_active", new ConstraintRule(ConstraintNames.UNIQUE_VIOLATION, ErrorCode.DUPLICATE_STUDENT_NO),        // AU-01
+            "ex_operation_period_dates", new ConstraintRule(ConstraintNames.EXCLUSION_VIOLATION, ErrorCode.PERIOD_OVERLAP),            // PO-02
+            "uq_key_log_reservation_action", new ConstraintRule(ConstraintNames.UNIQUE_VIOLATION, ErrorCode.INVALID_RESERVATION_STATE));
+
+    /** 제약 하나가 어떤 SQLState로 위반되고, 그때 어떤 에러 코드로 바꾸는지 */
+    record ConstraintRule(String sqlState, ErrorCode errorCode) {
+    }
 
     /** 서비스 규칙 위반 (가장 많이 쓰여요) */
     @ExceptionHandler(BusinessException.class)
@@ -94,8 +99,19 @@ public class GlobalExceptionHandler {
 
     /** 알려진 제약이면 에러 코드, 아니면 null. 서비스에서 제약 위반을 직접 잡을 때도 써요. */
     public static ErrorCode toErrorCode(Throwable e) {
-        String constraint = ConstraintNames.of(e);
-        return constraint == null ? null : CONSTRAINT_ERRORS.get(constraint);
+        ConstraintNames.Violation violation = ConstraintNames.violationOf(e);
+        if (violation == null) {
+            return null;
+        }
+        ConstraintRule rule = CONSTRAINT_ERRORS.get(violation.constraint());
+        if (rule == null) {
+            return null;
+        }
+        // SQLState를 알 수 없으면(드라이버·래퍼가 안 준 경우) 이름만으로 판단하고, 알면 기대값과 같아야 해요
+        if (violation.sqlState() != null && !rule.sqlState().equals(violation.sqlState())) {
+            return null;
+        }
+        return rule.errorCode();
     }
 
     /** 키 지급과 노쇼 처리처럼 같은 예약을 동시에 바꾼 경우 (reservation.version) */
