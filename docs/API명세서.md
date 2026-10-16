@@ -55,6 +55,9 @@
 | 409 | `CONCURRENT_UPDATE` | 다른 처리와 겹쳤어요. 새로고침 후 다시 시도해 주세요. |
 | 500 | `INTERNAL_ERROR` | 잠시 후 다시 시도해 주세요. |
 
+- DB 제약 위반·동시 처리 충돌은 위 409 코드로 바꿔요 (NF-05).
+  - 동시에 들어온 예약 INSERT끼리 겹침 검사 중 교착(PostgreSQL `40P01`)·직렬화 실패(`40001`)로 끊긴 쪽도 `409 RESERVATION_TIME_CONFLICT`예요(재시도하지 않아요). 그 밖의 교착·잠금 실패는 `409 CONCURRENT_UPDATE` (TS-16).
+  - 매핑되지 않은 제약 위반은 `500 INTERNAL_ERROR`이고, 서버 로그에는 제약 이름·SQLState만 남겨요(DB가 보내는 위반 행 값은 남기지 않아요, NF-01).
 - 볼 수 없는 대상은 404, 볼 수 있지만 권한이 없으면 403. 학생이 `/api/admin/**`를 부르면 403.
 - `must_change_password`인 사용자는 비밀번호 변경·내 정보 조회·로그아웃 외 API에서 `PASSWORD_CHANGE_REQUIRED`.
 
@@ -251,6 +254,7 @@
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
+| v0.7 | 2026-10-16 | 에러 규칙: 동시 INSERT 교착(`40P01`)·직렬화 실패(`40001`)도 409(`RESERVATION_TIME_CONFLICT`/`CONCURRENT_UPDATE`), 매핑 안 된 제약 위반 로그 원칙 (TS-16) |
 | v0.6 | 2026-10-13 | `GET /api/policy`에 노쇼 제재 기준(`penaltyWindowDays`·`penaltyThreshold`·`penaltyDays`) 추가 — 예약 완료 화면에 노쇼 원칙 안내 |
 | v0.5 | 2026-10-13 | `GET /api/policy`에 `keyIssueBeforeMinutes` 추가 (설문용 데모 화면 안내 문구) |
 | v0.4 | 2026-10-12 | 1단계(회원·인증) 세부 확정: 전화번호 정규화, 임시 비밀번호 상태 허용 API, 회원 검색 조건, `recentNoShowCount`, `CANNOT_DISABLE_SELF` |
