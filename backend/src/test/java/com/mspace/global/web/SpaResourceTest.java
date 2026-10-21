@@ -3,6 +3,7 @@ package com.mspace.global.web;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -14,11 +15,14 @@ class SpaResourceTest extends IntegrationTest {
 
     @Test
     void 화면_주소는_새로고침해도_index_html() throws Exception {
-        for (String path : new String[] {"/", "/me/reservations", "/admin/users", "/rooms/1"}) {
+        for (String path : new String[] {"/me/reservations", "/admin/users", "/rooms/1", "/privacy"}) {
             mvc.perform(get(path))
                     .andExpect(status().isOk())
                     .andExpect(content().string(containsString("spa-index")));
         }
+        // "/"는 Spring Boot 환영 페이지가 index.html로 forward해요 (MockMvc는 forward를 실행하지 않아 주소만 확인해요.
+        // 실제 서버에서 화면이 오는지는 CI docker 잡의 스모크 테스트가 확인해요)
+        mvc.perform(get("/")).andExpect(status().isOk()).andExpect(forwardedUrl("index.html"));
     }
 
     @Test
