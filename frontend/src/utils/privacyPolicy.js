@@ -1,5 +1,5 @@
 /**
- * 개인정보 처리방침 (NF-11). 가입 화면의 동의 체크가 이 내용을 가리켜요.
+ * 개인정보 처리방침 (NF-12). 가입 화면의 동의 체크가 이 내용을 가리켜요.
  * 수집 항목·목적·보관 기간을 바꾸면 PRIVACY_POLICY_VERSION과 백엔드 PrivacyPolicy.CURRENT_VERSION을 함께 올려요
  * → users.privacy_policy_version에 누가 어느 버전에 동의했는지 남아요.
  */
