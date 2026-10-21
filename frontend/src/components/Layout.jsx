@@ -17,6 +17,9 @@ export default function Layout() {
       </header>
       <main className="mx-auto max-w-3xl px-4 pb-28 pt-5">
         <Outlet />
+        <footer className="mt-10 text-center text-xs text-gray-400">
+          <Link to="/privacy" className="underline">개인정보 처리방침</Link>
+        </footer>
       </main>
       <BottomNav />
     </div>

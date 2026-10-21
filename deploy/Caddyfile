@@ -1,0 +1,16 @@
+# HTTPS 리버스 프록시 (docs/배포-가이드.md). DOMAIN으로 들어온 요청을 app:8080으로 넘기고 인증서는 자동 발급·갱신해요.
+{$DOMAIN} {
+	encode gzip
+
+	header {
+		# 1년 동안 HTTPS로만 접속 (처음 접속부터 암호화)
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# X-Forwarded-For·X-Forwarded-Proto를 붙여 넘겨요 → 앱이 실제 IP로 로그인 요청 수를 세요
+	reverse_proxy app:8080
+}

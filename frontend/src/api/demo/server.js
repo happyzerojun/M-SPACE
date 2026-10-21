@@ -115,6 +115,7 @@ function validateSignup(b) {
   if (!(b.name ?? '').trim() || b.name.trim().length > 50) errors.push({ field: 'name', message: '이름은 1~50자로 입력해 주세요.' })
   if (!PHONE.test(b.phone ?? '')) errors.push({ field: 'phone', message: '전화번호는 010-1234-5678 형식으로 입력해 주세요.' })
   if (!PASSWORD.test(b.password ?? '')) errors.push({ field: 'password', message: '비밀번호는 영문과 숫자를 모두 넣어 8~64자로 입력해 주세요.' })
+  if (b.privacyAgreed !== true) errors.push({ field: 'privacyAgreed', message: '개인정보 수집 및 이용에 동의해 주세요.' })
   if (errors.length) fail(400, 'VALIDATION_FAILED', '입력값을 확인해 주세요.', errors)
 }
 
@@ -370,6 +371,10 @@ route('get', '/admin/users', ({ db, params, now }) => {
     }))
   return [200, pageOf(list, params)]
 })
+// 데모는 노쇼 제재를 흉내 내지 않아서 이용 제한이 생기지 않아요 (빈 목록)
+route('get', '/admin/restrictions', ({ params }) => [200, pageOf([], params)])
+route('post', '/admin/restrictions/:id/lift', () => fail(404, 'RESTRICTION_NOT_FOUND', '이용 제한을 찾을 수 없어요.'))
+
 route('post', '/admin/users/:id/password-reset', ({ db, id, body }) => {
   if (!(body.reason ?? '').trim()) invalid('reason', '사유를 입력해 주세요.')
   const user = db.users.find((u) => u.id === Number(id) && u.status === 'ACTIVE')

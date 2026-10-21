@@ -26,19 +26,20 @@ try {
   // 1. 가입하면 바로 로그인돼 현황판으로 (AU-01)
   await page.goto(`${BASE}/signup`)
   await page.clickButton('가입하기')
-  await page.waitFor(`document.querySelectorAll('[aria-invalid="true"]').length >= 4`)
+  await page.waitFor(`document.querySelectorAll('[aria-invalid="true"]').length >= 5`)
   check(await noHScroll(), '빈 가입 폼 에러 표시 + 375px 가로 스크롤 없음')
   await page.type('#field-studentNo', student)
   await page.type('#field-name', '점검학생')
   await page.type('#field-phone', '01000000000')
   await page.type('#field-password', PASSWORD)
+  await page.eval(`document.querySelector('#field-privacyAgreed').click()`)   // 개인정보 수집 및 이용 동의 (NF-12)
   await page.clickButton('가입하기')
   await page.waitFor(`location.pathname === '/' && document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('점검학생')`)
   check(true, '가입 후 자동 로그인, 아래 메뉴에 이름 표시')
 
   // 2. 같은 학번 재가입은 409 안내
   const dup = await fetch(`${API}/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ studentNo: student, name: 'x', phone: '010-0000-0000', password: PASSWORD }) })
+    body: JSON.stringify({ studentNo: student, name: 'x', phone: '010-0000-0000', password: PASSWORD, privacyAgreed: true }) })
   check(dup.status === 409, '같은 학번 재가입 409', String(dup.status))
 
   // 3. 새로고침해도 로그인 유지, 내 정보 화면에서 로그아웃 (AU-03, AU-04)
@@ -70,7 +71,7 @@ try {
 
   // 6. 관리자: 회원 검색 → 비밀번호 초기화 (AU-06, AU-07)
   const res = await fetch(`${API}/auth/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ studentNo: admin, name: '점검관리자', phone: '010-0000-0000', password: PASSWORD }) })
+    body: JSON.stringify({ studentNo: admin, name: '점검관리자', phone: '010-0000-0000', password: PASSWORD, privacyAgreed: true }) })
   check(res.status === 201, '관리자용 계정 가입')
   sql(`UPDATE users SET role = 'ADMIN' WHERE student_no = '${admin}' AND status = 'ACTIVE'`)
   await page.goto(`${BASE}/me`)

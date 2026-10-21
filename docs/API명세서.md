@@ -1,6 +1,6 @@
 # M-SPACE API 명세서
 
-- 문서 버전: v0.1 (2026-10-12) · 근거: `요구사항.md` v0.2, `docs/예약-상태-설계.md` v0.1
+- 문서 버전: v0.8 (2026-10-21) · 근거: `요구사항.md` v1.0, `docs/예약-상태-설계.md` v0.4
 - 기본 경로 `/api`, JSON(UTF-8). 인증은 `Authorization: Bearer <accessToken>`.
 
 ## 0. 공통 규격
@@ -53,8 +53,12 @@
 | 409 | `PERIOD_OVERLAP` | 다른 특별 운영 기간과 날짜가 겹쳐요. |
 | 409 | `INVALID_RESTRICTION_STATE` | 이미 해제된 이용 제한이에요. |
 | 409 | `CONCURRENT_UPDATE` | 다른 처리와 겹쳤어요. 새로고침 후 다시 시도해 주세요. |
+| 429 | `TOO_MANY_REQUESTS` | 요청이 너무 많아요. 1분 뒤에 다시 시도해 주세요. (로그인·가입만, IP별 1분 20회, `Retry-After: 60`) |
 | 500 | `INTERNAL_ERROR` | 잠시 후 다시 시도해 주세요. |
 
+- DB 제약 위반·동시 처리 충돌은 위 409 코드로 바꿔요 (NF-05).
+  - 동시에 들어온 예약 INSERT끼리 겹침 검사 중 교착(PostgreSQL `40P01`)·직렬화 실패(`40001`)로 끊긴 쪽도 `409 RESERVATION_TIME_CONFLICT`예요(재시도하지 않아요). 그 밖의 교착·잠금 실패는 `409 CONCURRENT_UPDATE` (TS-16).
+  - 매핑되지 않은 제약 위반은 `500 INTERNAL_ERROR`이고, 서버 로그에는 제약 이름·SQLState만 남겨요(DB가 보내는 위반 행 값은 남기지 않아요, NF-01).
 - 볼 수 없는 대상은 404, 볼 수 있지만 권한이 없으면 403. 학생이 `/api/admin/**`를 부르면 403.
 - `must_change_password`인 사용자는 비밀번호 변경·내 정보 조회·로그아웃 외 API에서 `PASSWORD_CHANGE_REQUIRED`.
 
@@ -85,12 +89,12 @@
 ### POST `/api/auth/signup` — 회원가입 (AU-01) · 비로그인
 요청
 ```json
-{ "studentNo": "20231234", "name": "홍길동", "phone": "010-1234-5678", "password": "********" }
+{ "studentNo": "20231234", "name": "홍길동", "phone": "010-1234-5678", "password": "********", "privacyAgreed": true }
 ```
-검증: 학번 숫자 8~10자리, 이름 1~50자(앞뒤 공백 제거), 전화번호 `01X-XXX(X)-XXXX`(하이픈 없이 입력해도 돼요. `010-1234-5678` 형식으로 저장), 비밀번호 8~64자(영문·숫자 모두 포함).
+검증: 학번 숫자 8~10자리, 이름 1~50자(앞뒤 공백 제거), 전화번호 `01X-XXX(X)-XXXX`(하이픈 없이 입력해도 돼요. `010-1234-5678` 형식으로 저장), 비밀번호 8~64자(영문·숫자 모두 포함), `privacyAgreed`는 반드시 `true`(빠지거나 false면 `fieldErrors.privacyAgreed` "개인정보 수집·이용에 동의해 주세요.", NF-12). 동의 시각과 처리방침 버전을 저장해요.
 같은 학번 동시 가입은 DB 제약(`uq_users_student_no_active`)으로 1건만 성공해요.
 응답 `201` `UserResponse` `{ "id", "studentNo", "name", "phone", "role", "mustChangePassword" }`
-에러: `400 VALIDATION_FAILED`, `409 DUPLICATE_STUDENT_NO`
+에러: `400 VALIDATION_FAILED`, `409 DUPLICATE_STUDENT_NO`, `429 TOO_MANY_REQUESTS`
 
 ### POST `/api/auth/login` — 로그인 (AU-03) · 비로그인
 요청 `{ "studentNo": "20231234", "password": "********" }`
@@ -187,14 +191,16 @@
 | 메서드 | 경로 | 설명 | 요청 | 응답 | 주요 에러 |
 |---|---|---|---|---|---|
 | GET | `/api/admin/dashboard?date=` | 오늘 예약·이용 중·연체·노쇼 수와 처리 대기 목록 (AD-04) | — | `{ date, counts: {reserved, inUse, overdue, returned, completed, noShow, cancelled}, pendingIssue: [ReservationResponse], overdue: [ReservationResponse] }` | |
-| GET | `/api/admin/reservations` | 예약 검색 (AD-02). `date`, `from`, `to`, `roomId`, `status`, `q`(학번·이름), `outOfHours=true`(PO-04), `page`, `size` | — | `PageResponse<ReservationResponse>` | |
+| GET | `/api/admin/reservations` | 예약 검색 (AD-02). `date`(그날) 또는 `from`~`to`(날짜, 둘 다 포함, 최대 92일), 둘 다 없으면 오늘. `roomId`, `status`, `q`(학번 앞부분·이름 일부), `page`, `size`. 시작 시각·방 순 (`outOfHours`(PO-04)는 운영 설정 화면과 함께 2차) | — | `PageResponse<ReservationResponse>` | 400(기간) |
 | GET | `/api/admin/reservations/{id}` | 상세 + 키 이력 | — | `ReservationResponse` + `keyLogs: [KeyLogResponse]` | 404 |
 | POST | `/api/admin/reservations/{id}/cancel` | 관리자 취소 (AD-03) | `{ "reason": "점검" }` (1~200자) | `200 ReservationResponse` | 400, 404, 409 `INVALID_RESERVATION_STATE`, 409 `CONCURRENT_UPDATE` |
 | POST | `/api/admin/reservations/{id}/key-issue` | 키 지급 (KY-01, KY-02) | `{ "identityVerified": true, "memo"?: "" }` | `200 ReservationResponse` | 400 `IDENTITY_NOT_VERIFIED`, 409 `INVALID_RESERVATION_STATE`, 409 `KEY_ISSUE_NOT_ALLOWED_TIME`, 409 `CONCURRENT_UPDATE` |
-| POST | `/api/admin/reservations/{id}/key-return` | 반납 확인 (KY-03) | `{ "memo"?: "" }` | `200 ReservationResponse` | 409 `INVALID_RESERVATION_STATE` |
-| GET | `/api/admin/key-logs` | 키 이력 검색 (KY-07). `from`, `to`, `roomId`, `q`, `page`, `size` | — | `PageResponse<KeyLogResponse>` | |
+| POST | `/api/admin/reservations/{id}/key-return` | 반납 확인 (KY-03). 본문 없이 보내도 돼요 | `{ "memo"?: "" }` | `200 ReservationResponse` (`returnedLate`: 종료 시각 뒤 반납) | 409 `INVALID_RESERVATION_STATE` |
+| GET | `/api/admin/key-logs` | 키 이력 검색 (KY-07). `from`, `to`(날짜, 기본 최근 7일, 최대 92일), `roomId`, `q`, `page`, `size`. 최근 순 | — | `PageResponse<KeyLogResponse>` | 400(기간) |
 
 `KeyLogResponse`: `{ id, reservationId, roomName, studentNo, studentName, action, adminName, identityVerified, late, memo, occurredAt }`
+
+> 4.2 방·4.3 운영 정책·특별 운영 기간 API는 관리 화면과 함께 2차로 구현해요(시범운영 중 변경은 서버 담당자가 DB로 반영, `docs/운영-매뉴얼.md` 6장).
 
 ### 4.2 방 (AD-05)
 
@@ -227,9 +233,9 @@
 |---|---|---|---|---|
 | GET | `/api/admin/users?q=&status=&page=&size=` | — | `PageResponse<AdminUserResponse>` | `q`: 학번 앞부분 또는 이름 일부, `status`: `ACTIVE`·`DISABLED`(생략 시 전체), 학번 오름차순. `{ id, studentNo, name, phone, role, status, mustChangePassword, recentNoShowCount, restrictedUntil, createdAt }` — `recentNoShowCount`는 최근 `penalty_window_days`일 노쇼 수, `restrictedUntil`은 해제되지 않은 이용 제한의 종료 시각(없으면 null) |
 | POST | `/api/admin/users/{id}/password-reset` | `{ "reason": "본인 방문 확인" }` (1~200자) | `200 { "temporaryPassword": "…" }` | AU-07. 임시 비밀번호(영문·숫자 10자)는 이 응답에서만 보여요(`Cache-Control: no-store`). 로그·감사 기록에 남기지 않아요. 비활성 계정은 `404 USER_NOT_FOUND` |
-| POST | `/api/admin/users/{id}/disable` | `{ "reason": "…" }` (1~200자) | `200 AdminUserResponse` | AU-08. 이미 비활성이면 그대로 200(기록 추가 없음). 본인 계정은 `400 CANNOT_DISABLE_SELF`. 진행 중 RESERVED 예약의 관리자 취소는 예약 단계(3단계)에서 추가해요 |
-| GET | `/api/admin/restrictions?active=true&page=` | — | `PageResponse<RestrictionResponse>` | |
-| POST | `/api/admin/restrictions/{id}/lift` | `{ "reason": "…" }` | `200 RestrictionResponse` | 이미 해제됐으면 409 `INVALID_RESTRICTION_STATE` |
+| POST | `/api/admin/users/{id}/disable` | `{ "reason": "…" }` (1~200자) | `200 AdminUserResponse` | AU-08. 이미 비활성이면 그대로 200(기록 추가 없음). 본인 계정은 `400 CANNOT_DISABLE_SELF`. 키 받기 전(RESERVED) 예약은 사유 "계정 비활성화"로 함께 취소해요 |
+| GET | `/api/admin/restrictions?active=true&page=` | — | `PageResponse<RestrictionResponse>` | `active` 기본 true(지금 유효한 제한만), false면 전체. 최근 시작 순. `RestrictionResponse`: `{ id, userId, studentNo, studentName, startAt, endAt, reason, active, liftedAt, liftReason }` |
+| POST | `/api/admin/restrictions/{id}/lift` | `{ "reason": "…" }` (1~200자) | `200 RestrictionResponse` | 이미 해제됐으면 409 `INVALID_RESTRICTION_STATE`, 없으면 404 `RESTRICTION_NOT_FOUND`. 감사 기록 `RESTRICTION_LIFT` |
 
 ---
 
@@ -251,6 +257,8 @@
 | 버전 | 날짜 | 내용 |
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
+| v0.8 | 2026-10-21 | 2~4단계 구현과 맞춤: 현황판·예약·키·노쇼·이용 제한 API 구현, 가입 `privacyAgreed`(NF-12), `429 TOO_MANY_REQUESTS`, 관리자 예약·키 이력 검색 기간 규칙(최대 92일), 반납 본문 생략 가능, 방·운영 정책 관리 API는 2차 |
+| v0.7 | 2026-10-16 | 에러 규칙: 동시 INSERT 교착(`40P01`)·직렬화 실패(`40001`)도 409(`RESERVATION_TIME_CONFLICT`/`CONCURRENT_UPDATE`), 매핑 안 된 제약 위반 로그 원칙 (TS-16) |
 | v0.6 | 2026-10-13 | `GET /api/policy`에 노쇼 제재 기준(`penaltyWindowDays`·`penaltyThreshold`·`penaltyDays`) 추가 — 예약 완료 화면에 노쇼 원칙 안내 |
 | v0.5 | 2026-10-13 | `GET /api/policy`에 `keyIssueBeforeMinutes` 추가 (설문용 데모 화면 안내 문구) |
 | v0.4 | 2026-10-12 | 1단계(회원·인증) 세부 확정: 전화번호 정규화, 임시 비밀번호 상태 허용 API, 회원 검색 조건, `recentNoShowCount`, `CANNOT_DISABLE_SELF` |

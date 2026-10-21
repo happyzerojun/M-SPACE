@@ -8,6 +8,7 @@ import MePage from './pages/MePage.jsx'
 import MyReservationsPage from './pages/MyReservationsPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import PasswordChangePage from './pages/PasswordChangePage.jsx'
+import PrivacyPage from './pages/PrivacyPage.jsx'
 import ReservePage from './pages/ReservePage.jsx'
 import RoomPage from './pages/RoomPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
@@ -22,6 +23,7 @@ export default function App() {
         <Route index element={<BoardPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="signup" element={<SignupPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
         <Route path="rooms/:roomId" element={<RoomPage />} />
         <Route path="reserve" element={<ReservePage />} />
         <Route path="me" element={<RequireAuth><MePage /></RequireAuth>} />

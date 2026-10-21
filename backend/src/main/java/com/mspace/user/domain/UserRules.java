@@ -18,6 +18,8 @@ public final class UserRules {
     public static final String NAME_REGEX = "^(?=.*\\S).{1,50}$";
     public static final String NAME_MESSAGE = "이름은 1~50자로 입력해 주세요.";
 
+    public static final String PRIVACY_MESSAGE = "개인정보 수집 및 이용에 동의해 주세요.";
+
     private UserRules() {
     }
 
@@ -31,5 +33,10 @@ public final class UserRules {
 
     public static String normalizeName(String name) {
         return name == null ? null : name.strip();
+    }
+
+    /** 010-1234-5678 → 010-****-5678. 본인·관리자 외에게 보여줄 때 써요 (NF-02) */
+    public static String maskPhone(String phone) {
+        return phone == null ? null : phone.replaceAll("^(\\d{3})-\\d{3,4}-(\\d{4})$", "$1-****-$2");
     }
 }

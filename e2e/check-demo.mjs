@@ -86,6 +86,7 @@ try {
   await page.type('#field-name', '설문체험')
   await page.type('#field-phone', '010-0000-5555')
   await page.type('#field-password', 'demo1234')
+  await page.eval(`document.querySelector('#field-privacyAgreed').click()`)   // 개인정보 수집 및 이용 동의 (NF-12)
   await page.clickButton('가입하기')
   await page.waitFor(`location.pathname === '/' && document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('설문체험')`)
   check(true, '회원가입 후 바로 로그인')

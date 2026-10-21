@@ -10,10 +10,14 @@ import com.mspace.global.common.PageCondition;
 import com.mspace.global.common.PageResponse;
 import com.mspace.global.error.BusinessException;
 import com.mspace.global.error.ErrorCode;
+import com.mspace.reservation.domain.Reservation;
+import com.mspace.reservation.domain.ReservationStatus;
+import com.mspace.reservation.repository.ReservationRepository;
 import com.mspace.user.domain.User;
 import com.mspace.user.domain.UserStatus;
 import com.mspace.user.repository.UserRepository;
 import java.time.Clock;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,12 +30,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminUserService {
 
     private static final String TARGET_USER = "USER";
+    /** 계정 비활성화로 함께 취소된 예약의 사유 (예약 화면에 그대로 보여요) */
+    static final String DISABLE_CANCEL_REASON = "계정 비활성화";
 
     private final UserRepository userRepository;
     private final AdminUserQueryRepository adminUserQueryRepository;
     private final AdminAuditLogRepository auditLogRepository;
     private final PasswordEncoder passwordEncoder;
     private final TemporaryPasswordGenerator temporaryPasswordGenerator;
+    private final ReservationRepository reservationRepository;
     private final Clock clock;
 
     public PageResponse<AdminUserResponse> search(String q, UserStatus status, PageCondition page) {
@@ -52,7 +59,8 @@ public class AdminUserService {
 
     /**
      * 이미 비활성이면 그대로 돌려줘요(여러 번 눌러도 기록이 쌓이지 않게).
-     * TODO(3단계, AU-08): 이 학생의 RESERVED 예약을 Reservation.cancelByAdmin()으로 함께 취소해요.
+     * 아직 키를 받지 않은 예약(RESERVED)은 함께 취소해서 그 시간을 다른 학생이 쓸 수 있게 해요 (AU-08).
+     * 이용 중(IN_USE) 예약은 키가 학생에게 있어서 반납 확인으로 끝내요.
      */
     @Transactional
     public AdminUserResponse disable(Long adminId, Long userId, String reason) {
@@ -62,7 +70,11 @@ public class AdminUserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
         if (user.isActive()) {
+            Instant now = clock.instant();
             user.disable();
+            for (Reservation r : reservationRepository.findByUserAndStatus(userId, ReservationStatus.RESERVED)) {
+                r.cancelByAdmin(adminId, DISABLE_CANCEL_REASON, now);
+            }
             auditLogRepository.save(AdminAuditLog.of(adminId, AdminAction.USER_DISABLE, TARGET_USER, userId, reason.strip()));
             userRepository.flush();
         }

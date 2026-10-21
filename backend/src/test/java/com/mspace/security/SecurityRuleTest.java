@@ -36,19 +36,20 @@ class SecurityRuleTest extends IntegrationTest {
     }
 
     @Test
-    void 관리자는_관리자_주소를_통과_아직_없는_API는_404() throws Exception {
+    void 관리자는_관리자_주소를_통과_없는_API는_404() throws Exception {
         Long admin = insertUser("990900", "ADMIN");
         mvc.perform(get("/api/admin/reservations").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/not-exists").header(HttpHeaders.AUTHORIZATION, bearer(admin)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
     }
 
     @Test
-    void 현황판_주소는_비로그인도_통과() throws Exception {
-        // 현황판 API는 1단계에서 만들어요. 지금은 인증에 막히지 않고 404까지 가는지만 봐요
-        mvc.perform(get("/api/board"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    void 현황판_방_목록_예약_규칙은_비로그인도_통과() throws Exception {
+        mvc.perform(get("/api/board")).andExpect(status().isOk());
+        mvc.perform(get("/api/rooms")).andExpect(status().isOk());
+        mvc.perform(get("/api/policy")).andExpect(status().isOk());
     }
 
     @Test
