@@ -1,5 +1,6 @@
 -- 개인정보 파기 절차 (NF-11, 개인정보 처리방침 "보관 기간")
--- 실행: docker exec -i mspace-postgres psql -U mspace -d mspace -v ON_ERROR_STOP=1 < scripts/purge-personal-data.sql
+-- 실행(운영): docker compose -f deploy/docker-compose.prod.yml exec -T db psql -U mspace -d mspace -v ON_ERROR_STOP=1 < scripts/purge-personal-data.sql
+-- 실행(로컬):  docker exec -i mspace-postgres psql -U mspace -d mspace -v ON_ERROR_STOP=1 < scripts/purge-personal-data.sql
 -- 이 파일은 되돌릴 수 없는 작업이에요. 실행 전에 반드시 백업(scripts/backup-db.sh)을 받고, 학과 담당자와 날짜를 정한 뒤 실행해요.
 -- 기본은 1번(탈퇴 계정 파기)만 실행되고, 2번(시범운영 종료 전체 파기)은 주석을 풀어야 실행돼요.
 

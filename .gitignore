@@ -15,3 +15,6 @@ dist/
 
 # 화면 점검 스크린샷 (e2e)
 e2e/screenshots/
+
+# 운영 DB 백업 (개인정보 포함) → 커밋 금지
+deploy/backups/

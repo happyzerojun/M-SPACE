@@ -113,3 +113,40 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  # 배포 이미지(화면 + API)가 빌드되고, 진짜 PostgreSQL과 함께 떠서 화면·API·초기 관리자 로그인이 되는지 확인해요 (docs/배포-가이드.md)
+  docker:
+    name: docker (image build + smoke)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Build image
+        run: docker build -t mspace:ci .
+
+      - name: Smoke test
+        run: |
+          set -euo pipefail
+          docker network create mspace-ci
+          docker run -d --name db --network mspace-ci -e POSTGRES_DB=mspace -e POSTGRES_USER=mspace -e POSTGRES_PASSWORD=ci postgres:17
+          docker run -d --name app --network mspace-ci -p 8080:8080 --restart on-failure:10 \
+            -e DB_HOST=db -e DB_PORT=5432 -e DB_PASSWORD=ci \
+            -e JWT_SECRET=ci-only-secret-key-at-least-32-bytes-long \
+            -e BOOTSTRAP_ADMIN_STUDENT_NO=99009999 -e BOOTSTRAP_ADMIN_PASSWORD=ci-admin-1234 \
+            mspace:ci
+          for i in $(seq 1 60); do curl -fs localhost:8080/api/policy > /dev/null && break; sleep 3; done
+          curl -fsS localhost:8080/api/policy
+          curl -fsS localhost:8080/api/board > /dev/null
+          # 화면 주소는 새로고침해도 React index.html
+          curl -fsS localhost:8080/me/reservations | grep -q '<div id="root">'
+          # API 보호 (로그인 필요 → 401 JSON)
+          test "$(curl -s -o /dev/null -w '%{http_code}' localhost:8080/api/admin/dashboard)" = "401"
+          # 첫 배포 관리자: 로그인되고 비밀번호 변경이 강제돼요
+          curl -fsS -X POST localhost:8080/api/auth/login -H 'Content-Type: application/json' \
+            -d '{"studentNo":"99009999","password":"ci-admin-1234"}' | grep -q '"mustChangePassword":true'
+          echo "::notice title=Docker smoke::image built, /api/policy·/api/board·SPA index·401·bootstrap admin OK"
+
+      - name: App logs
+        if: failure()
+        run: docker logs app 2>&1 | tail -100

@@ -24,7 +24,23 @@ spring:
         jdbc:
           time_zone: UTC      # Instant는 UTC로 저장하고, "오늘"·운영 시간 판단만 Asia/Seoul로 해요 (NF-06)
 
+server:
+  # 리버스 프록시(Caddy·Nginx)가 붙인 X-Forwarded-For·X-Forwarded-Proto를 믿어요 (사설망 프록시만, Tomcat RemoteIpValve).
+  # 요청 수 제한이 실제 학생 IP로 세고, HTTPS 요청으로 인식돼 보안 헤더(HSTS)가 붙어요 (docs/배포-가이드.md)
+  forward-headers-strategy: native
+
 mspace:
   jwt:
     secret: ${JWT_SECRET}
     access-token-validity: 2h # AU-03
+  # 로그인·가입 요청 수 제한 (IP별 1분) — AuthRateLimitFilter
+  rate-limit:
+    auth-per-minute: ${AUTH_RATE_LIMIT_PER_MINUTE:20}
+  # 노쇼·자동 이용 종료 주기 작업 — ReservationScheduler
+  scheduler:
+    enabled: ${SCHEDULER_ENABLED:true}
+  # 처음 배포할 때 관리자 계정이 하나도 없으면 이 값으로 만들어요(첫 로그인 때 비밀번호 변경 강제) — AdminBootstrap
+  bootstrap-admin:
+    student-no: ${BOOTSTRAP_ADMIN_STUDENT_NO:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+    name: ${BOOTSTRAP_ADMIN_NAME:관리자}

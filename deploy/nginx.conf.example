@@ -1,0 +1,43 @@
+# 학교 서버에 이미 Nginx가 있을 때 쓰는 예시 (Caddy 대신). 인증서 경로·도메인은 학교 환경에 맞춰 바꿔요.
+# app 컨테이너의 8080은 이 서버 안에서만 접근되게(127.0.0.1) 열어 두고, 외부에는 443만 열어요.
+
+limit_req_zone $binary_remote_addr zone=mspace_auth:10m rate=20r/m;   # 로그인·가입 추가 방어(앱에도 제한이 있어요)
+
+server {
+    listen 80;
+    server_name mspace.example.ac.kr;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name mspace.example.ac.kr;
+
+    ssl_certificate     /etc/ssl/mspace/fullchain.pem;
+    ssl_certificate_key /etc/ssl/mspace/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    server_tokens off;
+    client_max_body_size 1m;   # 파일 업로드가 없어서 작게
+
+    location /api/auth/ {
+        limit_req zone=mspace_auth burst=10 nodelay;
+        proxy_pass http://127.0.0.1:8080;
+        include /etc/nginx/mspace-proxy-headers.conf;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        include /etc/nginx/mspace-proxy-headers.conf;
+    }
+}
+
+# /etc/nginx/mspace-proxy-headers.conf
+#   proxy_set_header Host $host;
+#   proxy_set_header X-Real-IP $remote_addr;
+#   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#   proxy_set_header X-Forwarded-Proto $scheme;
