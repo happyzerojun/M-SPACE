@@ -122,7 +122,7 @@ class SignupApiTest extends IntegrationTest {
                             """.formatted(PASSWORD, consent)))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("privacyAgreed")))
-                    .andExpect(jsonPath("$.fieldErrors[*].message", hasItem("개인정보 수집·이용에 동의해 주세요.")));
+                    .andExpect(jsonPath("$.fieldErrors[*].message", hasItem("개인정보 수집 및 이용에 동의해 주세요.")));
         }
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM users", Long.class)).isZero();
     }

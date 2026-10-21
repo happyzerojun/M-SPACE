@@ -53,9 +53,9 @@ export default function SignupPage() {
           value={form.phone} onChange={change} error={fieldErrors.phone} hint="010-1234-5678" />
         <FormField label="비밀번호" name="password" type="password" autoComplete="new-password"
           value={form.password} onChange={change} error={fieldErrors.password} hint="영문과 숫자를 모두 넣어 8자 이상" />
-        {/* 개인정보 수집·이용 동의 (NF-12): 항목·목적·보관 기간을 체크 바로 위에 보여줘요 */}
+        {/* 개인정보 수집 및 이용 동의 (NF-12): 항목·목적·보관 기간을 체크 바로 위에 보여줘요 */}
         <fieldset className="rounded-md border border-gray-200 bg-white p-3">
-          <legend className="px-1 text-sm font-medium text-gray-700">개인정보 수집·이용 동의 (필수)</legend>
+          <legend className="px-1 text-sm font-medium text-gray-700">개인정보 수집 및 이용 동의 (필수)</legend>
           <dl className="space-y-1.5 text-xs text-gray-600">
             {PRIVACY_SUMMARY.map((row) => (
               <div key={row.label}>

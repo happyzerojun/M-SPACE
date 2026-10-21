@@ -51,7 +51,7 @@ public class User extends BaseTimeEntity {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
-    /** 가입할 때 개인정보 수집·이용에 동의한 시각과 처리방침 버전 (NF-12). V3 이전 가입 계정은 null이에요 */
+    /** 가입할 때 개인정보 수집 및 이용에 동의한 시각과 처리방침 버전 (NF-12). V3 이전 가입 계정은 null이에요 */
     @Column(name = "privacy_agreed_at")
     private Instant privacyAgreedAt;
 

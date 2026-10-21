@@ -32,7 +32,7 @@ try {
   await page.type('#field-name', '점검학생')
   await page.type('#field-phone', '01000000000')
   await page.type('#field-password', PASSWORD)
-  await page.eval(`document.querySelector('#field-privacyAgreed').click()`)   // 개인정보 수집·이용 동의 (NF-12)
+  await page.eval(`document.querySelector('#field-privacyAgreed').click()`)   // 개인정보 수집 및 이용 동의 (NF-12)
   await page.clickButton('가입하기')
   await page.waitFor(`location.pathname === '/' && document.querySelector('nav[aria-label="주 메뉴"]').innerText.includes('점검학생')`)
   check(true, '가입 후 자동 로그인, 아래 메뉴에 이름 표시')
