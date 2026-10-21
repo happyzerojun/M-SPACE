@@ -24,7 +24,7 @@ public record SignupRequest(
         @Pattern(regexp = UserRules.PASSWORD_REGEX, message = UserRules.PASSWORD_MESSAGE)
         String password,
 
-        /** 개인정보 수집·이용 동의 (NF-11). 빠지거나 false면 가입이 안 돼요 */
+        /** 개인정보 수집·이용 동의 (NF-12). 빠지거나 false면 가입이 안 돼요 */
         @NotNull(message = UserRules.PRIVACY_MESSAGE)
         @AssertTrue(message = UserRules.PRIVACY_MESSAGE)
         Boolean privacyAgreed

@@ -24,7 +24,7 @@ const ROWS = [
   { label: '문의', value: 'IT융합대학 학과 사무실 (M-SPACE 관리)' },
 ]
 
-/** 개인정보 처리방침 화면 (NF-11). 가입 화면의 동의 체크가 이 내용을 가리켜요 */
+/** 개인정보 처리방침 화면 (NF-12). 가입 화면의 동의 체크가 이 내용을 가리켜요 */
 export default function PrivacyPage() {
   return (
     <section className="mx-auto max-w-xl">
