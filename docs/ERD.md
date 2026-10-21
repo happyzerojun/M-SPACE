@@ -1,7 +1,7 @@
 # M-SPACE ERD
 
-- 문서 버전: v0.1 (2026-10-12) · 근거: `요구사항.md` v0.2
-- DB: PostgreSQL 17, `btree_gist` 확장 사용 · 구현: `backend/src/main/resources/db/migration/V1__init.sql`
+- 문서 버전: v0.5 (2026-10-21) · 근거: `요구사항.md` v1.0
+- DB: PostgreSQL 17, `btree_gist` 확장 사용 · 구현: `backend/src/main/resources/db/migration/V1__init.sql` ~ `V3__privacy_consent.sql`
 - 공통 규칙: PK는 `bigint generated always as identity`, 시각은 `timestamptz`(UTC 저장, 판단은 Asia/Seoul), 모든 테이블에 `created_at`. 값이 바뀌는 테이블은 `updated_at`도 둬요.
 
 ## 1. 다이어그램
@@ -25,6 +25,8 @@ erDiagram
         varchar role "STUDENT | ADMIN"
         varchar status "ACTIVE | DISABLED"
         boolean must_change_password
+        timestamptz privacy_agreed_at "NF-12"
+        varchar privacy_policy_version
     }
     room {
         bigint id PK
@@ -124,6 +126,8 @@ erDiagram
 | role | varchar(20) | NOT NULL, CHECK IN ('STUDENT','ADMIN') | |
 | status | varchar(20) | NOT NULL, CHECK IN ('ACTIVE','DISABLED') | AU-08 비활성화 |
 | must_change_password | boolean | NOT NULL DEFAULT false | AU-07 임시 비밀번호 |
+| privacy_agreed_at | timestamptz | | 개인정보 수집·이용 동의 시각 (NF-12, V3). V3 전에 가입한 계정은 NULL |
+| privacy_policy_version | varchar(20) | | 동의한 처리방침 버전 (예: `2026-10-21`) |
 | created_at / updated_at | timestamptz | NOT NULL | |
 
 - 이메일은 받지 않아요(D-2).
@@ -293,5 +297,6 @@ ALTER TABLE user_restriction ADD CONSTRAINT ex_user_restriction_active
 |---|---|---|
 | v0.1 | 2026-10-12 | 최초 작성 |
 | v0.4 | 2026-10-13 | V2: `max_duration_minutes` 기본값 180 → 120 (공식 규정) |
+| v0.5 | 2026-10-21 | V3: `users.privacy_agreed_at`, `privacy_policy_version` (NF-12) |
 | v0.3 | 2026-10-12 | V1 구현: 30분 단위 CHECK(`ck_reservation_slot`), `key_log` 수정·삭제 금지 트리거(`tr_key_log_immutable`), 초기 데이터(방 5개·정책 1행) |
 | v0.2 | 2026-10-12 | 개방 기간(D-9): `operation_period.key_required`, `reservation.key_required·checked_in_at·completed_at`, `COMPLETED` 상태 추가 |

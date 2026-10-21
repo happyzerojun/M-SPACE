@@ -4,6 +4,7 @@ IT융합대학 M-SPACE실(스터디룸)의 실시간 이용 현황 조회·온�
 
 - 요구사항: [`요구사항.md`](요구사항.md)
 - 설계: [`docs/ERD.md`](docs/ERD.md) · [`docs/예약-상태-설계.md`](docs/예약-상태-설계.md) · [`docs/API명세서.md`](docs/API명세서.md)
+- 운영: [`docs/배포-가이드.md`](docs/배포-가이드.md) (서버 담당) · [`docs/운영-매뉴얼.md`](docs/운영-매뉴얼.md) (학과실 조교)
 - 개발 규칙: [`CLAUDE.md`](CLAUDE.md)
 
 ## 기술 스택
@@ -43,6 +44,15 @@ cd frontend && npm install && npm run dev  # 화면 :5173 (/api → 8080 프록�
 
 포트가 겹치면 `SERVER_PORT=8081 ./gradlew bootRun`, `API_TARGET=http://localhost:8081 npm run dev -- --port 5175`처럼 바꿔서 띄워요. 띄우기 전에 `lsof -nP -iTCP:<포트> -sTCP:LISTEN`으로 비어 있는지 확인해요.
 
+## 운영 배포
+
+화면 + API를 Docker 이미지 하나로 만들고, PostgreSQL·HTTPS 프록시(Caddy)와 함께 띄워요. 자세한 절차·보안 점검표·백업·개인정보 파기는 [`docs/배포-가이드.md`](docs/배포-가이드.md).
+
+```bash
+cp deploy/.env.prod.example deploy/.env    # DOMAIN, DB_PASSWORD, JWT_SECRET, 첫 관리자 값 채우기
+cd deploy && docker compose -f docker-compose.prod.yml up -d --build
+```
+
 ## 검증
 
 ```bash
@@ -51,7 +61,7 @@ cd frontend && npm run lint && npm run build
 node e2e/run-all.mjs                         # BASE=http://localhost:5174 처럼 대상 주소를 바꿀 수 있어요
 ```
 
-PR(`develop`·`main` 대상)과 병합마다 GitHub Actions(`.github/workflows/ci.yml`)가 백엔드 테스트와 프론트 lint·빌드를 돌려요. 백엔드 테스트 건수는 PR의 Checks 화면 annotation에 남아요.
+PR(`develop`·`main` 대상)과 병합마다 GitHub Actions(`.github/workflows/ci.yml`)가 백엔드 테스트, 프론트 lint·빌드, 배포 이미지 빌드·스모크 테스트를 돌려요. 백엔드 테스트 건수는 PR의 Checks 화면 annotation에 남아요.
 
 ## 브랜치·버전
 
@@ -77,4 +87,7 @@ docs/      설계 문서
 | 1 | 회원·인증 (가입·로그인·내 정보·관리자 회원 관리) | 완료 (`v0.2.0`) |
 | 데모 | 설문용 프론트 데모: 현황판·예약·내 예약·개방 기간 이용 시작·관리자 키 지급 (가짜 서버) | 완료 (`v0.2.0`) |
 | 데모 2 | 숙박 앱형 예약 화면(방 카드 → 방 화면 → 하단 예약 바), 예약 완료 노쇼 원칙 안내, 아래 고정 메뉴, 설문 연결, 최대 2시간 | 완료 (`v0.3.0`) |
-| 2~ | 현황판 → 예약 → 키·노쇼 → 관리자 백엔드 → 배포 | 예정 (설문 결과 반영) |
+| 2~4 | 현황판·방·규칙 API, 예약 신청·조회·취소·개방 기간 체크인, 키 지급·반납, 관리자 오늘 화면·검색·취소, 노쇼·이용 제한 스케줄러, 이용 제한 해제 화면 | 완료 (PR #12·#14, 릴리즈 전) |
+| 개인정보 | 가입 시 수집·이용 동의, 처리방침 화면, 파기 절차 | 완료 (PR #13, 릴리즈 전) |
+| 배포 | 이미지 하나(화면+API), Caddy HTTPS, 백업, 초기 관리자, 로그인 요청 수 제한 | 완료 (PR #14, 서버는 학교 협의 중 D-8) |
+| 5 | 관리 화면의 운영 설정(방·운영 시간·특별 운영 기간), 관리자 지정 화면 | 예정 |

@@ -1,6 +1,7 @@
 package com.mspace.user.repository;
 
 import com.mspace.user.domain.User;
+import com.mspace.user.domain.UserRole;
 import com.mspace.user.domain.UserStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -15,6 +16,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByStudentNoAndStatus(String studentNo, UserStatus status);
 
     boolean existsByStudentNoAndStatus(String studentNo, UserStatus status);
+
+    /** 첫 배포 때 관리자가 이미 있는지 (AdminBootstrap) */
+    boolean existsByRoleAndStatus(UserRole role, UserStatus status);
 
     /**
      * 예약 신청자 행 잠금 (설계서 5장 8번). 같은 학생이 동시에 두 건을 신청하면 뒤 요청이 앞 요청의 커밋을 기다렸다가

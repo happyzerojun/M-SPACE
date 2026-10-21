@@ -5,6 +5,9 @@ mspace:
   # 노쇼 스케줄러는 테스트에서 돌지 않게 해요. 테스트가 시각을 고정하고 NoShowService.runOnce()를 직접 불러요
   scheduler:
     enabled: false
+  # 테스트는 한 IP(127.0.0.1)에서 로그인을 아주 많이 해요. 요청 수 제한은 AuthRateLimitFilterTest가 따로 검증해요
+  rate-limit:
+    auth-per-minute: 100000
 
 # N+1 검증용: 실행된 SQL 수를 셀 수 있게 Hibernate 통계를 켜요 (테스트에서만)
 spring:

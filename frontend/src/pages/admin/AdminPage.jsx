@@ -1,4 +1,5 @@
 import { NavLink, Route, Routes } from 'react-router'
+import AdminRestrictionsPage from './AdminRestrictionsPage.jsx'
 import AdminTodayPage from './AdminTodayPage.jsx'
 import AdminUsersPage from './AdminUsersPage.jsx'
 
@@ -13,11 +14,13 @@ export default function AdminPage() {
       <nav className="mt-3 flex flex-wrap gap-1">
         <NavLink to="/admin" end className={tabClass}>예약·키</NavLink>
         <NavLink to="/admin/users" className={tabClass}>회원</NavLink>
+        <NavLink to="/admin/restrictions" className={tabClass}>이용 제한</NavLink>
       </nav>
       <div className="mt-4">
         <Routes>
           <Route index element={<AdminTodayPage />} />
           <Route path="users" element={<AdminUsersPage />} />
+          <Route path="restrictions" element={<AdminRestrictionsPage />} />
         </Routes>
       </div>
     </section>
