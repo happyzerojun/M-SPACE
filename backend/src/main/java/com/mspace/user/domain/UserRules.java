@@ -32,4 +32,9 @@ public final class UserRules {
     public static String normalizeName(String name) {
         return name == null ? null : name.strip();
     }
+
+    /** 010-1234-5678 → 010-****-5678. 본인·관리자 외에게 보여줄 때 써요 (NF-02) */
+    public static String maskPhone(String phone) {
+        return phone == null ? null : phone.replaceAll("^(\\d{3})-\\d{3,4}-(\\d{4})$", "$1-****-$2");
+    }
 }

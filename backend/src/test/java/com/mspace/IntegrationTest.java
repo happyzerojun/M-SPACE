@@ -5,6 +5,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import com.mspace.global.security.JwtTokenProvider;
+import com.mspace.global.util.KstTime;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import org.junit.jupiter.api.AfterEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -22,7 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
-@Import(TestcontainersConfiguration.class)
+@Import({TestcontainersConfiguration.class, TestClockConfiguration.class})
 public abstract class IntegrationTest {
 
     @Autowired
@@ -33,6 +38,15 @@ public abstract class IntegrationTest {
 
     @Autowired
     private JwtTokenProvider tokenProvider;
+
+    /** 서비스가 쓰는 시계. set()으로 "지금"을 고정해요 (실제 시각보다 미래로만, MutableClock 주석 참고) */
+    @Autowired
+    protected MutableClock clock;
+
+    @AfterEach
+    void resetClock() {
+        clock.reset();
+    }
 
     @AfterEach
     void cleanUpDatabase() {
@@ -102,5 +116,26 @@ public abstract class IntegrationTest {
 
     protected Long roomId(String name) {
         return jdbcTemplate.queryForObject("SELECT id FROM room WHERE name = ?", Long.class, name);
+    }
+
+    /** 오늘(KST, 실제 날짜)부터 dayOffset일 뒤의 한국 시각. 예: at(1, "14:00") = 내일 14:00 KST */
+    protected static Instant at(int dayOffset, String hhmm) {
+        LocalDate date = KstTime.dateOf(Instant.now()).plusDays(dayOffset);
+        return date.atTime(LocalTime.parse(hhmm)).atZone(KstTime.KST).toInstant();
+    }
+
+    protected static LocalDate day(int dayOffset) {
+        return KstTime.dateOf(Instant.now()).plusDays(dayOffset);
+    }
+
+    /** API 형식의 시각 "2026-10-13T14:00:00+09:00" (OffsetDateTime.toString()은 0초를 빼서 쓰지 않아요) */
+    protected static String iso(Instant instant) {
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(KstTime.of(instant));
+    }
+
+    protected static String reservationBody(Long roomId, Instant start, Instant end, int headcount) {
+        return """
+                {"roomId":%d,"startAt":"%s","endAt":"%s","headcount":%d}
+                """.formatted(roomId, iso(start), iso(end), headcount);
     }
 }
