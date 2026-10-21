@@ -115,7 +115,7 @@ function validateSignup(b) {
   if (!(b.name ?? '').trim() || b.name.trim().length > 50) errors.push({ field: 'name', message: '이름은 1~50자로 입력해 주세요.' })
   if (!PHONE.test(b.phone ?? '')) errors.push({ field: 'phone', message: '전화번호는 010-1234-5678 형식으로 입력해 주세요.' })
   if (!PASSWORD.test(b.password ?? '')) errors.push({ field: 'password', message: '비밀번호는 영문과 숫자를 모두 넣어 8~64자로 입력해 주세요.' })
-  if (b.privacyAgreed !== true) errors.push({ field: 'privacyAgreed', message: '개인정보 수집·이용에 동의해 주세요.' })
+  if (b.privacyAgreed !== true) errors.push({ field: 'privacyAgreed', message: '개인정보 수집 및 이용에 동의해 주세요.' })
   if (errors.length) fail(400, 'VALIDATION_FAILED', '입력값을 확인해 주세요.', errors)
 }
 
