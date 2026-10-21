@@ -18,6 +18,8 @@ public final class UserRules {
     public static final String NAME_REGEX = "^(?=.*\\S).{1,50}$";
     public static final String NAME_MESSAGE = "이름은 1~50자로 입력해 주세요.";
 
+    public static final String PRIVACY_MESSAGE = "개인정보 수집·이용에 동의해 주세요.";
+
     private UserRules() {
     }
 

@@ -91,7 +91,7 @@ public abstract class IntegrationTest {
 
     protected TestUser signupAndLogin(String studentNo) throws Exception {
         mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
-                        {"studentNo":"%s","name":"테스트","phone":"010-0000-0000","password":"%s"}
+                        {"studentNo":"%s","name":"테스트","phone":"010-0000-0000","password":"%s","privacyAgreed":true}
                         """.formatted(studentNo, PASSWORD)))
                 .andExpect(status().isCreated());
         return login(studentNo, PASSWORD);

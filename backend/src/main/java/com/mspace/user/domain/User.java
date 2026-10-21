@@ -9,6 +9,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.Instant;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -50,6 +51,13 @@ public class User extends BaseTimeEntity {
     @Column(name = "must_change_password", nullable = false)
     private boolean mustChangePassword;
 
+    /** 가입할 때 개인정보 수집·이용에 동의한 시각과 처리방침 버전 (NF-11). V3 이전 가입 계정은 null이에요 */
+    @Column(name = "privacy_agreed_at")
+    private Instant privacyAgreedAt;
+
+    @Column(name = "privacy_policy_version", length = 20)
+    private String privacyPolicyVersion;
+
     public static User create(String studentNo, String name, String phone, String passwordHash, UserRole role) {
         User user = new User();
         user.studentNo = studentNo;
@@ -59,6 +67,12 @@ public class User extends BaseTimeEntity {
         user.role = role;
         user.status = UserStatus.ACTIVE;
         return user;
+    }
+
+    /** 동의 없이는 가입할 수 없어요. 동의 문구는 화면의 처리방침 버전과 같아요 (AU-01, NF-11) */
+    public void agreePrivacy(Instant agreedAt, String policyVersion) {
+        this.privacyAgreedAt = agreedAt;
+        this.privacyPolicyVersion = policyVersion;
     }
 
     public boolean isActive() {
