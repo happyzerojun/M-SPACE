@@ -1,7 +1,9 @@
 package com.mspace.auth.dto;
 
 import com.mspace.user.domain.UserRules;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 /** 회원가입 (AU-01). 이메일은 받지 않아요 (D-2) */
@@ -20,6 +22,11 @@ public record SignupRequest(
 
         @NotBlank(message = UserRules.PASSWORD_MESSAGE)
         @Pattern(regexp = UserRules.PASSWORD_REGEX, message = UserRules.PASSWORD_MESSAGE)
-        String password
+        String password,
+
+        /** 개인정보 수집 및 이용 동의 (NF-12). 빠지거나 false면 가입이 안 돼요 */
+        @NotNull(message = UserRules.PRIVACY_MESSAGE)
+        @AssertTrue(message = UserRules.PRIVACY_MESSAGE)
+        Boolean privacyAgreed
 ) {
 }

@@ -25,7 +25,7 @@ class SignupApiTest extends IntegrationTest {
 
     private ResultActions signup(String studentNo, String name, String phone, String password) throws Exception {
         return mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
-                {"studentNo":"%s","name":"%s","phone":"%s","password":"%s"}
+                {"studentNo":"%s","name":"%s","phone":"%s","password":"%s","privacyAgreed":true}
                 """.formatted(studentNo, name, phone, password)));
     }
 
@@ -112,5 +112,26 @@ class SignupApiTest extends IntegrationTest {
         assertThat(statuses).containsOnly(201, 409);
         assertThat(statuses).filteredOn(s -> s == 201).hasSize(1);
         assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM users", Long.class)).isEqualTo(1);
+    }
+
+    @Test
+    void 개인정보_수집_이용에_동의하지_않으면_가입할_수_없음() throws Exception {
+        for (String consent : new String[] {"", ",\"privacyAgreed\":false"}) {
+            mvc.perform(post("/api/auth/signup").contentType(MediaType.APPLICATION_JSON).content("""
+                            {"studentNo":"99000001","name":"김민수","phone":"010-1234-5678","password":"%s"%s}
+                            """.formatted(PASSWORD, consent)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.fieldErrors[*].field", hasItem("privacyAgreed")))
+                    .andExpect(jsonPath("$.fieldErrors[*].message", hasItem("개인정보 수집 및 이용에 동의해 주세요.")));
+        }
+        assertThat(jdbcTemplate.queryForObject("SELECT count(*) FROM users", Long.class)).isZero();
+    }
+
+    @Test
+    void 동의하면_동의_시각과_처리방침_버전을_남김() throws Exception {
+        signup("99000001", "김민수", "010-1234-5678", PASSWORD).andExpect(status().isCreated());
+        var row = jdbcTemplate.queryForMap("SELECT privacy_agreed_at, privacy_policy_version FROM users");
+        assertThat(row.get("privacy_agreed_at")).isNotNull();
+        assertThat(row).containsEntry("privacy_policy_version", "2026-10-21");
     }
 }

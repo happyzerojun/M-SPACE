@@ -6,12 +6,14 @@ import com.mspace.auth.dto.SignupRequest;
 import com.mspace.global.error.BusinessException;
 import com.mspace.global.error.ErrorCode;
 import com.mspace.global.security.JwtTokenProvider;
+import com.mspace.user.domain.PrivacyPolicy;
 import com.mspace.user.domain.User;
 import com.mspace.user.domain.UserRole;
 import com.mspace.user.domain.UserRules;
 import com.mspace.user.domain.UserStatus;
 import com.mspace.user.dto.UserResponse;
 import com.mspace.user.repository.UserRepository;
+import java.time.Clock;
 import java.util.Optional;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,13 +27,16 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
+    private final Clock clock;
     /** 없는 학번에도 해시 비교를 한 번 해서, 응답 시간으로 가입 여부를 알아낼 수 없게 해요 */
     private final String dummyHash;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider tokenProvider,
+                       Clock clock) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
+        this.clock = clock;
         this.dummyHash = passwordEncoder.encode("timing-equalizer-password1");
     }
 
@@ -46,6 +51,7 @@ public class AuthService {
         }
         User user = User.create(request.studentNo(), UserRules.normalizeName(request.name()),
                 UserRules.normalizePhone(request.phone()), passwordEncoder.encode(request.password()), UserRole.STUDENT);
+        user.agreePrivacy(clock.instant(), PrivacyPolicy.CURRENT_VERSION);   // 동의는 DTO 검증(@AssertTrue)에서 이미 확인했어요
         return UserResponse.from(userRepository.saveAndFlush(user));
     }
 
