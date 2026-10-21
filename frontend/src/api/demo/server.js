@@ -371,6 +371,10 @@ route('get', '/admin/users', ({ db, params, now }) => {
     }))
   return [200, pageOf(list, params)]
 })
+// 데모는 노쇼 제재를 흉내 내지 않아서 이용 제한이 생기지 않아요 (빈 목록)
+route('get', '/admin/restrictions', ({ params }) => [200, pageOf([], params)])
+route('post', '/admin/restrictions/:id/lift', () => fail(404, 'RESTRICTION_NOT_FOUND', '이용 제한을 찾을 수 없어요.'))
+
 route('post', '/admin/users/:id/password-reset', ({ db, id, body }) => {
   if (!(body.reason ?? '').trim()) invalid('reason', '사유를 입력해 주세요.')
   const user = db.users.find((u) => u.id === Number(id) && u.status === 'ACTIVE')
